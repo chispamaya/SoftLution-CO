@@ -2,7 +2,7 @@
 SoftLution-CO
 
 Título e imagen de portada;
-Insignias;
+![Badge en Desarollo](https://img.shields.io/badge/STATUS-EN%20DESAROLLO-green)
 Índice;
 Descripción del Proyecto;
 Estado del proyecto;
