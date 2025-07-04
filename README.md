@@ -1,7 +1,7 @@
 
 
 ![Logotipo Softlution & CO)](https://github.com/user-attachments/assets/4dc8180c-d971-4f43-a982-1674b3cf585b)
-# SoftLution & CO
+
 
 <p align="center">
 <img src="https://img.shields.io/badge/STATUS-EN%20DESAROLLO-green">
