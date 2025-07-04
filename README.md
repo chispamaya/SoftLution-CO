@@ -1,5 +1,5 @@
 
-![SofTLUTION](https://github.com/user-attachments/assets/9b549c15-fa3d-483e-9643-4d377a8e3d54)
+![SofTLUTION (1)](https://github.com/user-attachments/assets/0b0a8b0c-a968-4dbc-aa1a-b6f79a30fb78)
 
 <em> #SOFTLUTION & CO  </em>
 ![Badge en Desarollo](https://img.shields.io/badge/STATUS-EN%20DESAROLLO-green) <html br>
