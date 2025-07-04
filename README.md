@@ -10,7 +10,10 @@
 Proyecto en desarrollo, un sistema de automatizacion de stock para Black Iron
 
 ## :hammer:Funcionalidades del proyecto
-- `Funcionalidad 1`: Visualizacion de stock  1- `Funcionalidad 2`: Advertencia ante falta de stock 2- `Funcionalidad 3`: Registrar pedido/compra 3- `Funcionalidad 4`: Cancelar pedido/compra y reintegro de stock 4- 
+- `Funcionalidad 1`: Visualizacion de stock
+- `Funcionalidad 2`: Advertencia ante falta de stock
+- `Funcionalidad 3`: Registrar pedido/compra
+- `Funcionalidad 4`: Cancelar pedido/compra y reintegro de stock 
 Acceso al Proyecto;
 Tecnologías utilizadas;
 Personas Contribuyentes;
