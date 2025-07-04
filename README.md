@@ -1,8 +1,10 @@
 
-![SofTLUTION (1)](https://github.com/user-attachments/assets/0b0a8b0c-a968-4dbc-aa1a-b6f79a30fb78)
+![SofTLUTION (1)](https://github.com/user-attachments/assets/ffc9ba75-31c2-42e0-bf33-bd29f2e2c5d9)
+
 
 <em> #SOFTLUTION & CO  </em>
-![Badge en Desarollo](https://img.shields.io/badge/STATUS-EN%20DESAROLLO-green) <html br>
+![Badge en Desarollo](https://img.shields.i![SofTLUTION (1)](https://github.com/user-attachments/assets/da265017-f062-420f-a6d0-dc51d56026e0)
+o/badge/STATUS-EN%20DESAROLLO-green) <html br>
 Índice;
 Descripción del Proyecto;
 Estado del proyecto;
