@@ -15,12 +15,16 @@ Proyecto en desarrollo, un sistema de automatizacion de stock para Black Iron
 - `Funcionalidad 3`: Registrar pedido/compra
 - `Funcionalidad 4`: Cancelar pedido/compra y reintegro de stock 
 Acceso al Proyecto;
-## Tecnologías utilizadas;
+## Tecnologías utilizadas
 ![python_src_logo_icon_168037](https://github.com/user-attachments/assets/ab09d3aa-79f8-406a-b069-68eaf778359d)
 
 
-Personas Contribuyentes;
-Personas Desarrolladoras del Proyecto;
+## Personas Contribuyentes;
+## Autores
+
+| [<img src="https://avatars.githubusercontent.com/u/37356058?v=4" width=115><br><sub>Camila Fernanda Alves</sub>](https://github.com/camilafernanda) |  [<img src="https://avatars.githubusercontent.com/u/71970858?v=4" width=115><br><sub>Ellen Pimentel</sub>]([https://github.com/guilhermeonrails](https://github.com/ellenpimentel)) |  [<img src="https://avatars.githubusercontent.com/u/91544872?v=4" width=115><br><sub>Génesys Rondón</sub>](https://github.com/genesysaluralatam) |
+| :---: | :---: | :---: |
+
 Licencia.
 
 VER: https://www.aluracursos.com/blog/como-escribir-un-readme-increible-en-tu-github
