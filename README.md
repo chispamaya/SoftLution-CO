@@ -22,10 +22,10 @@ Acceso al Proyecto;
 ## Personas Contribuyentes;
 ## Autores
 
-Gastón Amaya
-Martín Romero Krawczyk
-Martín Lopez Schilacci
-Leonel Pedraza
+- Gastón Amaya
+- Martín Romero Krawczyk
+- Martín Lopez Schilacci
+- Leonel Pedraza
 
 Licencia.
 
