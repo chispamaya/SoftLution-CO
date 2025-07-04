@@ -1,4 +1,4 @@
-![python_src_logo_icon_168037](https://github.com/user-attachments/assets/147fae2b-88c1-4bc1-ac35-f8a97c621c48)
+
 
 ![Logotipo Softlution & CO)](https://github.com/user-attachments/assets/4dc8180c-d971-4f43-a982-1674b3cf585b)
 # SoftLution & CO
