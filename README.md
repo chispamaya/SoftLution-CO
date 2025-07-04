@@ -20,6 +20,11 @@ Acceso al Proyecto;
 
 
 ## Personas Contribuyentes;
+<a href="https://github.com/chispamaya/SoftLution-CO/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=chispamaya/SoftLution-CO" />
+</a>
+
+
 ## Autores
 
 - Gastón Amaya
