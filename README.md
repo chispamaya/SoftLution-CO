@@ -29,7 +29,7 @@ Acceso al Proyecto;
 
 - Gastón Amaya
 - Martín Romero Krawczyk
-- Martín Lopez Schilacci
+- Martín Lopez Schillaci
 - Leonel Pedraza
 
 Licencia.
