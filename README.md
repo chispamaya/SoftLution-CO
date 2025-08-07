@@ -21,8 +21,7 @@ Acceso al Proyecto;
 
 ## Personas Contribuyentes;
 <a href="https://github.com/chispamaya/SoftLution-CO/graphs/contributors">
-    <img src= "https://www.instagram.com/damianolaso?igsh=MW5temcxMGk4czVrdQ==">
-   
+   ![IMG_6492](https://github.com/user-attachments/assets/b28ed099-044d-4afe-a52e-866591bd1ed7)
 </a>
 
 
