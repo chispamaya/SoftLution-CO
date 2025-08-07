@@ -21,9 +21,10 @@ Acceso al Proyecto;
 
 ## Personas Contribuyentes;
 <a href="https://github.com/chispamaya/SoftLution-CO/graphs/contributors">
-  <img src=![IMG_6492](https://github.com/user-attachments/assets/58251b39-fee5-466f-87cb-3f37fc61dad2)
-/>
+ <a href="https://github.com/chispamaya/SoftLution-CO/graphs/contributors">
+  <img src="https://github.com/user-attachments/assets/58251b39-fee5-466f-87cb-3f37fc61dad2" alt="Foto de contribuyente" height="100"/>
 </a>
+
 
 
 ## Autores
