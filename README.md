@@ -4,7 +4,7 @@
 
 
 <p align="center">
-<img src="https://img.shields.io/badge/STATUS-EN%20DESAROLLO-green">
+<img src= >
 </p>
 
 Proyecto en desarrollo, un sistema de automatizacion de stock para Black Iron
