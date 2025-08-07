@@ -21,8 +21,10 @@ Acceso al Proyecto;
 
 ## Personas Contribuyentes;
 <a href="https://github.com/chispamaya/SoftLution-CO/graphs/contributors">
-  <img src="https://scontent.cdninstagram.com/v/t51.2885-19/15625285_219739685141421_7591449034636656640_a.jpg?stp=cp0_dst-jpg_s110x80_tt6&_nc_cat=101&ccb=1-7&_nc_sid=bf7eb4&_nc_ohc=3b_k9wIV4oYQ7kNvwElEw1L&_nc_oc=AdnFIM8lCfcfKuFFVYlmGBv1KXukYLImhG1N7wKsFi1hvGxkPWI-fxKKrVj5o5RYSAE&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&oh=00_AfPH2XHxZKUF-1ApKNlaP5s8ajYMzEQQQeGWLva-XQwWDQ&oe=686DA45E" />
+ <a href="https://github.com/chispamaya/SoftLution-CO/graphs/contributors">
+  <img src="https://github.com/user-attachments/assets/58251b39-fee5-466f-87cb-3f37fc61dad2" alt="Foto de contribuyente" height="100"/>
 </a>
+
 
 
 ## Autores
@@ -35,4 +37,3 @@ Acceso al Proyecto;
 Licencia.
 
 VER: https://www.aluracursos.com/blog/como-escribir-un-readme-increible-en-tu-github
-
