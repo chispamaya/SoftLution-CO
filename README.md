@@ -4,7 +4,7 @@
 
 
 <p align="center">
-<img src= >
+<img src="https://img.shields.io/badge/STATUS-EN%20DESAROLLO-green">
 </p>
 
 Proyecto en desarrollo, un sistema de automatizacion de stock para Black Iron
@@ -21,7 +21,8 @@ Acceso al Proyecto;
 
 ## Personas Contribuyentes;
 <a href="https://github.com/chispamaya/SoftLution-CO/graphs/contributors">
-   ![IMG_6492](https://github.com/user-attachments/assets/b28ed099-044d-4afe-a52e-866591bd1ed7)
+  <img src=![IMG_6492](https://github.com/user-attachments/assets/58251b39-fee5-466f-87cb-3f37fc61dad2)
+/>
 </a>
 
 
