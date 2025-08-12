@@ -1,7 +1,9 @@
 import sqlite3
 
+
 conn = sqlite3.connect('blackiron.db')
 cursor = conn.cursor()
+
 
 cursor.execute('''
 CREATE TABLE producto (
@@ -13,7 +15,9 @@ CREATE TABLE producto (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 CREATE TABLE stock (
@@ -26,7 +30,9 @@ CREATE TABLE stock (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 CREATE TABLE cliente (
@@ -38,7 +44,9 @@ CREATE TABLE cliente (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 CREATE TABLE factura (
@@ -50,7 +58,9 @@ CREATE TABLE factura (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 CREATE TABLE facturar (
@@ -62,7 +72,9 @@ CREATE TABLE facturar (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 CREATE TABLE pedido (
@@ -76,7 +88,9 @@ CREATE TABLE pedido (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 CREATE TABLE empleados (
@@ -87,7 +101,9 @@ CREATE TABLE empleados (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 CREATE TABLE kits (
@@ -97,14 +113,19 @@ CREATE TABLE kits (
 )
 ''')
 
+
 conn.commit()
+
 
 cursor.execute('''
 INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
 (25000, 'Proteína de suero', 'Optimum Nutrition', 'Suplemento')
 ''')
 
+
 conn.commit()
+
+
 
 
 cursor.execute('''
@@ -112,7 +133,10 @@ INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
 (12000, 'Creatina monohidratada', 'Universal Nutrition', 'Suplemento');
 ''')
 
+
 conn.commit()
+
+
 
 
 cursor.execute('''
@@ -120,7 +144,10 @@ INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
 (1500, 'Guantes de entrenamiento', 'Nike', 'Accesorio');
 ''')
 
+
 conn.commit()
+
+
 
 
 cursor.execute('''
@@ -128,37 +155,53 @@ INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
 (30000, 'BCAA en polvo', 'MuscleTech', 'Suplemento');
 ''')
 
+
 conn.commit()
 
 
+
+
 cursor.execute('''
-INSERT INTO stock (minimo, maximo, real, id_producto) VALUES
+INSERT INTO stock (minimo, maximo, total, id_producto) VALUES
 (10, 50, 30, 1);
 ''')
 
+
 conn.commit()
 
 
+
+
 cursor.execute('''
-INSERT INTO stock (minimo, maximo, real, id_producto) VALUES
+INSERT INTO stock (minimo, maximo, total, id_producto) VALUES
 (5, 20, 15, 2);
 ''')
 
+
 conn.commit()
 
 
+
+
 cursor.execute('''
-INSERT INTO stock (minimo, maximo, real, id_producto) VALUES
+INSERT INTO stock (minimo, maximo, total, id_producto) VALUES
 (20, 100, 50, 3);
 ''')
 
+
 conn.commit()
+
+
 
 
 cursor.execute('''
-INSERT INTO stock (minimo, maximo, real, id_producto) VALUES
+INSERT INTO stock (minimo, maximo, total, id_producto) VALUES
 (8, 40, 25, 4);
 ''')
 
+
 conn.commit()
+
+
+
 
