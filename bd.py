@@ -65,10 +65,7 @@ cursor.execute('''
 CREATE TABLE pedido (
     id_pedido INTEGER PRIMARY KEY,
     estado TEXT,
-    cantidad INT,
-    id_producto INTEGER,
     id_factura INTEGER,
-    FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
     FOREIGN KEY (id_factura) REFERENCES factura(id_factura)
 )
 ''')
