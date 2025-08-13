@@ -52,23 +52,8 @@ cursor.execute('''
 CREATE TABLE factura (
     id_factura INTEGER PRIMARY KEY,
     total INT,
-    nombre_producto TEXT,
     DNI INTEGER,
     FOREIGN KEY (DNI) REFERENCES cliente(DNI)
-)
-''')
-
-
-conn.commit()
-
-
-cursor.execute('''
-CREATE TABLE facturar (
-    id_facturar INTEGER PRIMARY KEY,
-    DNI INTEGER,
-    id_factura INTEGER,
-    FOREIGN KEY (DNI) REFERENCES cliente(DNI),
-    FOREIGN KEY (id_factura) REFERENCES factura(id_factura)
 )
 ''')
 
@@ -123,6 +108,27 @@ CREATE TABLE conjuntar(
 )
 ''')
 
+cursor.execute('''
+CREATE TABLE llevar(
+    id INT PRIMARY KEY,
+    id_pedido INT,
+    id_producto INT,
+    foreign key (id_pedido) references pedido(id_pedido),
+    foreign key (id_producto) references producto(id_producto)
+)
+''')
+
+cursor.execute('''
+CREATE TABLE pedido-kit(
+    id INT PRIMARY KEY,
+    id_pedido INT,
+    id_kit INT,
+    foreign key (id_kit) references kits(id),
+    foreign key (id_pedido) references pedido(id_pedido)
+)
+''')
+
+conn.commit()
 
 cursor.execute('''
 INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
