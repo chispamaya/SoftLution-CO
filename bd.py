@@ -107,7 +107,8 @@ conn.commit()
 
 cursor.execute('''
 CREATE TABLE kits (
-    id INTEGER PRIMARY KEY
+    nombre INTEGER PRIMARY KEY,
+    precio real
 )
 ''')
 conn.commit()
