@@ -107,14 +107,20 @@ conn.commit()
 
 cursor.execute('''
 CREATE TABLE kits (
-    id_kits INTEGER PRIMARY KEY,
-    id_producto INTEGER,
-    FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+    id INTEGER PRIMARY KEY
 )
 ''')
-
-
 conn.commit()
+
+cursor.execute('''
+CREATE TABLE conjuntar(
+    id INT PRIMARY KEY,
+    id_kit INT,
+    id_producto INT,
+    foreign key (id_kit) references kits(id),
+    foreign key (id_producto) references producto(id_producto)
+)
+''')
 
 
 cursor.execute('''
