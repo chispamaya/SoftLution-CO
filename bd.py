@@ -116,7 +116,7 @@ CREATE TABLE llevar(
 ''')
 
 cursor.execute('''
-CREATE TABLE pedido-kit(
+CREATE TABLE pedido_kit(
     id INT PRIMARY KEY,
     id_pedido INT,
     id_kit INT,
