@@ -8,7 +8,7 @@ cursor = conn.cursor()
 cursor.execute('''
 CREATE TABLE producto (
     id_producto INTEGER PRIMARY KEY,
-    precio INT,
+    precio real,
     nombre_producto TEXT,
     marca TEXT,
     categoria_producto TEXT
