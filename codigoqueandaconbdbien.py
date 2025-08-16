@@ -1,0 +1,743 @@
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+import sqlite3
+import time
+
+# Variables globales para el manejo de intentos de inicio de sesión
+intentos_fallidos = 0
+tiempo_de_bloqueo = 0
+MAX_INTENTOS = 3
+TIEMPO_DE_ESPERA = 30
+
+def setup_database():
+    """Crea las tablas de la base de datos si no existen."""
+    conn = sqlite3.connect("blackiron.db")
+    cursor = conn.cursor()
+
+    # PRODUCTO
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS producto (
+            id_producto INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre_producto TEXT NOT NULL,
+            marca TEXT,
+            categoria_producto TEXT,
+            precio REAL NOT NULL
+        )
+    """)
+    # STOCK
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS stock (
+            id_stock INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_producto INTEGER,
+            minimo INTEGER,
+            maximo INTEGER,
+            total INTEGER,
+            FOREIGN KEY(id_producto) REFERENCES producto(id_producto)
+        )
+    """)
+    # CLIENTE
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cliente (
+            id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
+            DNI INTEGER,
+            nombre TEXT,
+            apellido TEXT,
+            gmail TEXT,
+            direccion TEXT
+        )
+    """)
+    # FACTURA
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS factura (
+            id_factura INTEGER PRIMARY KEY AUTOINCREMENT,
+            DNI INTEGER,
+            nombre_producto TEXT,
+            total REAL,
+            FOREIGN KEY(DNI) REFERENCES cliente(DNI)
+        )
+    """)
+    # PEDIDO
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS pedido (
+            id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
+            estado TEXT,
+            cantidad INTEGER,
+            id_producto INTEGER,
+            id_factura INTEGER,
+            FOREIGN KEY(id_producto) REFERENCES producto(id_producto),
+            FOREIGN KEY(id_factura) REFERENCES factura(id_factura)
+        )
+    """)
+    # EMPLEADOS
+    # Esta es la tabla que causa el problema si ya existe sin 'apellido'
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS empleados (
+            id_empleado INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            apellido TEXT NOT NULL,
+            contrasenia TEXT NOT NULL
+        )
+    """)
+    # KITS
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS kits (
+            id_kit INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_producto INTEGER,
+            nombre TEXT,
+            precio REAL,
+            FOREIGN KEY(id_producto) REFERENCES producto(id_producto)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def poblar_datos_ejemplo():
+    """Inserta datos de ejemplo si las tablas están vacías."""
+    conn = sqlite3.connect("blackiron.db")
+    cursor = conn.cursor()
+    
+    # Empleados
+    cursor.execute("SELECT COUNT(*) FROM empleados")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO empleados (nombre, apellido, contrasenia) VALUES ('admin', 'Gomez', '12345')")
+        cursor.execute("INSERT INTO empleados (nombre, apellido, contrasenia) VALUES ('Juan', 'Perez', 'abcde')")
+        
+    # Productos
+    cursor.execute("SELECT COUNT(*) FROM producto")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Proteina en Polvo', 'WheyPro', 'Suplementos', 150.50)")
+        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Guantes de Gimnasio', 'FitGear', 'Accesorios', 25.00)")
+        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Mancuerna de 10kg', 'IronGym', 'Equipo', 300.00)")
+        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Banda Elastica', 'FitGear', 'Accesorios', 200.00)")
+        
+    # Stock
+    cursor.execute("SELECT COUNT(*) FROM stock")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (10, 50, 5, 1)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (5, 20, 12, 2)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (2, 10, 5, 3)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (5, 25, 0, 4)")
+        
+    # Clientes
+    cursor.execute("SELECT COUNT(*) FROM cliente")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO cliente (DNI, gmail, direccion, apellido, nombre) VALUES (12345678, 'cliente1@mail.com', 'Calle Falsa 123', 'Diaz', 'Carlos')")
+        
+    # Facturas
+    cursor.execute("SELECT COUNT(*) FROM factura")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO factura (DNI, nombre_producto, total) VALUES (12345678, 'Proteina en Polvo', 150.50)")
+        
+    # Pedidos
+    cursor.execute("SELECT COUNT(*) FROM pedido")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO pedido (estado, cantidad, id_producto, id_factura) VALUES ('entregado', 1, 1, 1)")
+        
+    conn.commit()
+    conn.close()
+
+class BlackIronApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Gestión Black Iron")
+        self.root.geometry("350x250")
+        self.root.resizable(False, False)
+        
+        setup_database()
+        poblar_datos_ejemplo()
+        self.show_login_screen()
+
+    def clear_frame(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+    def show_login_screen(self):
+        self.clear_frame()
+        self.root.title("Iniciar Sesión")
+        self.root.geometry("300x250")
+
+        tk.Label(self.root, text="Nombre:").pack(pady=5)
+        self.entry_nombre = tk.Entry(self.root)
+        self.entry_nombre.pack(pady=5)
+        
+        tk.Label(self.root, text="Apellido:").pack(pady=5)
+        self.entry_apellido = tk.Entry(self.root)
+        self.entry_apellido.pack(pady=5)
+
+        tk.Label(self.root, text="Contraseña:").pack(pady=5)
+        self.entry_contrasena = tk.Entry(self.root, show="*")
+        self.entry_contrasena.pack(pady=5)
+
+        btn_login = tk.Button(self.root, text="Iniciar Sesión", command=self.verificar_login)
+        btn_login.pack(pady=10)
+
+    def verificar_login(self):
+        global intentos_fallidos, tiempo_de_bloqueo
+
+        if tiempo_de_bloqueo > time.time():
+            tiempo_restante = int(tiempo_de_bloqueo - time.time())
+            messagebox.showwarning("Cuenta Bloqueada",
+                                   f"Demasiados intentos fallidos. Inténtalo de nuevo en {tiempo_restante} segundos.")
+            return
+
+        nombre = self.entry_nombre.get()
+        apellido = self.entry_apellido.get()
+        contrasena = self.entry_contrasena.get()
+
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM empleados WHERE nombre = ? AND apellido = ? AND contrasenia = ?", (nombre, apellido, contrasena))
+            empleado = cursor.fetchone()
+
+            if empleado:
+                intentos_fallidos = 0
+                messagebox.showinfo("Acceso Correcto", f"¡Inicio de sesión exitoso! Bienvenido, {empleado[1]}.")
+                self.show_employee_menu()
+            else:
+                intentos_fallidos += 1
+                if intentos_fallidos >= MAX_INTENTOS:
+                    tiempo_de_bloqueo = time.time() + TIEMPO_DE_ESPERA
+                    messagebox.showerror("Error de Credenciales",
+                                         f"Demasiados intentos fallidos. La cuenta ha sido bloqueada por {TIEMPO_DE_ESPERA} segundos.")
+                    intentos_fallidos = 0
+                else:
+                    messagebox.showerror("Error de Credenciales",
+                                         f"Usuario o contraseña incorrectos. Te quedan {MAX_INTENTOS - intentos_fallidos} intentos.")
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error de conexión o consulta a la base de datos: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def show_employee_menu(self):
+        self.clear_frame()
+        self.root.title("Menú de Empleado")
+        self.root.geometry("350x450")
+        
+        label_bienvenida = tk.Label(self.root, text="Bienvenido al sistema.", font=("Arial", 14))
+        label_bienvenida.pack(pady=10)
+
+        btn_tomar_pedido = tk.Button(self.root, text="Tomar Pedido (Ventas)", width=25, command=self.tomar_pedido)
+        btn_tomar_pedido.pack(pady=5)
+        btn_pedidos = tk.Button(self.root, text="Visualizar Pedidos", width=25, command=self.mostrar_pedidos)
+        btn_pedidos.pack(pady=5)
+        btn_kits = tk.Button(self.root, text="Ver Kits", width=25, command=self.mostrar_kits)
+        btn_kits.pack(pady=5)
+
+        separador = tk.Frame(self.root, height=2, bd=1, relief=tk.SUNKEN)
+        separador.pack(fill=tk.X, padx=20, pady=10)
+        
+        label_stock_mgmt = tk.Label(self.root, text="Gestión de Stock", font=("Arial", 12))
+        label_stock_mgmt.pack(pady=5)
+
+        btn_ver_stock = tk.Button(self.root, text="Ver y Gestionar Stock", width=25, command=self.show_stock_management_menu)
+        btn_ver_stock.pack(pady=5)
+
+        btn_cal_stock = tk.Button(self.root, text="Calcular Stock General", width=25, command=self.show_cal_stock_menu)
+        btn_cal_stock.pack(pady=5)
+
+        separador2 = tk.Frame(self.root, height=2, bd=1, relief=tk.SUNKEN)
+        separador2.pack(fill=tk.X, padx=20, pady=10)
+
+        btn_cerrar = tk.Button(self.root, text="Cerrar Sesión", width=25, command=self.show_login_screen)
+        btn_cerrar.pack(pady=10)
+
+    def mostrar_pedidos(self):
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT p.id_pedido, p.estado, p.cantidad, pr.nombre_producto, f.id_factura FROM pedido p INNER JOIN producto pr ON p.id_producto = pr.id_producto INNER JOIN factura f ON p.id_factura = f.id_factura")
+            pedidos_data = cursor.fetchall()
+
+            pedidos_window = tk.Toplevel(self.root)
+            pedidos_window.title("Visualizar Pedidos")
+
+            text_widget = tk.Text(pedidos_window, wrap="word", width=60, height=15)
+            text_widget.pack(pady=10, padx=10)
+
+            text_widget.insert(tk.END, "ID Pedido | Estado | Cantidad | Producto | ID Factura\n")
+            text_widget.insert(tk.END, "-----------------------------------------------------\n")
+
+            for row in pedidos_data:
+                text_widget.insert(tk.END, f"{row[0]:<10} | {row[1]:<7} | {row[2]:<8} | {row[3]:<10} | {row[4]}\n")
+
+            text_widget.config(state=tk.DISABLED)
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al obtener pedidos: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def mostrar_kits(self):
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT k.id_kit, p.nombre_producto FROM kits k INNER JOIN producto p ON k.id_producto = p.id_producto")
+            kits_data = cursor.fetchall()
+
+            kits_window = tk.Toplevel(self.root)
+            kits_window.title("Ver Kits")
+
+            text_widget = tk.Text(kits_window, wrap="word", width=40, height=10)
+            text_widget.pack(pady=10, padx=10)
+
+            text_widget.insert(tk.END, "ID Kit | Producto\n")
+            text_widget.insert(tk.END, "------------------------\n")
+
+            for row in kits_data:
+                text_widget.insert(tk.END, f"{row[0]:<7} | {row[1]}\n")
+
+            text_widget.config(state=tk.DISABLED)
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al obtener kits: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def tomar_pedido(self):
+        pedido_ventana = tk.Toplevel(self.root)
+        pedido_ventana.title("Tomar Pedido")
+        pedido_ventana.geometry("450x550")
+
+        form_frame = tk.Frame(pedido_ventana)
+        form_frame.pack(pady=10, padx=10, fill=tk.X)
+
+        tk.Label(form_frame, text="DNI del Cliente:").pack(pady=5)
+        entry_dni = tk.Entry(form_frame)
+        entry_dni.pack()
+
+        tk.Label(form_frame, text="Nombre del Producto:").pack(pady=5)
+        entry_producto = tk.Entry(form_frame)
+        entry_producto.pack()
+
+        tk.Label(form_frame, text="Cantidad:").pack(pady=5)
+        entry_cantidad = tk.Entry(form_frame)
+        entry_cantidad.pack()
+
+        def guardar_pedido():
+            try:
+                conn = sqlite3.connect('blackiron.db')
+                cursor = conn.cursor()
+
+                dni = entry_dni.get()
+                nombre_producto = entry_producto.get()
+                cantidad = entry_cantidad.get()
+
+                if not dni or not nombre_producto or not cantidad:
+                    messagebox.showwarning("Campos Vacíos", "Todos los campos son obligatorios.")
+                    return
+
+                cantidad = int(cantidad)
+
+                cursor.execute("SELECT id_producto, precio FROM producto WHERE nombre_producto = ?", (nombre_producto,))
+                producto_info = cursor.fetchone()
+
+                if not producto_info:
+                    messagebox.showerror("Producto Inexistente", "El producto no se encuentra en la base de datos.")
+                    return
+
+                id_producto, precio = producto_info
+
+                cursor.execute("SELECT real FROM stock WHERE id_producto = ?", (id_producto,))
+                stock_real = cursor.fetchone()
+
+                if stock_real is None or stock_real[0] < cantidad:
+                    messagebox.showerror("Error de Stock", "No hay suficiente stock disponible para este producto.")
+                    return
+
+                total_factura = precio * cantidad
+
+                cursor.execute("INSERT INTO factura (total, nombre_producto, DNI) VALUES (?, ?, ?)",
+                               (total_factura, nombre_producto, dni))
+                id_factura = cursor.lastrowid
+
+                cursor.execute(
+                    "INSERT INTO pedido (estado, cantidad, id_producto, id_factura) VALUES ('pendiente', ?, ?, ?)",
+                    (cantidad, id_producto, id_factura))
+
+                nuevo_stock = stock_real[0] - cantidad
+                cursor.execute("UPDATE stock SET real = ? WHERE id_producto = ?", (nuevo_stock, id_producto))
+
+                conn.commit()
+                messagebox.showinfo("Pedido Guardado",
+                                     f"El pedido para '{nombre_producto}' ha sido registrado con éxito. Total: ${total_factura}")
+                
+                self.display_stock_warnings(stock_text_widget)
+                
+            except sqlite3.Error as e:
+                messagebox.showerror("Error de BD", f"Error al guardar el pedido: {e}")
+            except ValueError:
+                messagebox.showerror("Error de entrada", "La cantidad debe ser un número entero.")
+            finally:
+                if conn:
+                    conn.close()
+
+        btn_guardar = tk.Button(form_frame, text="Guardar Pedido", command=guardar_pedido)
+        btn_guardar.pack(pady=10)
+
+        separador = tk.Frame(pedido_ventana, height=2, bd=1, relief=tk.SUNKEN)
+        separador.pack(fill=tk.X, padx=10, pady=5)
+
+        warning_frame = tk.Frame(pedido_ventana)
+        warning_frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+        
+        tk.Label(warning_frame, text="⚠️ Alertas de Stock Bajo ⚠️", font=("Arial", 12)).pack(pady=5)
+
+        stock_text_widget = tk.Text(warning_frame, wrap="word", width=45, height=15)
+        stock_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        scrollbar = tk.Scrollbar(warning_frame, command=stock_text_widget.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        stock_text_widget.config(yscrollcommand=scrollbar.set)
+        
+        self.display_stock_warnings(stock_text_widget)
+
+    def display_stock_warnings(self, text_widget):
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT p.nombre_producto, s.minimo, s.maximo, s.real
+                FROM producto p JOIN stock s ON p.id_producto = s.id_producto
+            ''')
+            data = cursor.fetchall()
+            
+            text_widget.config(state=tk.NORMAL)
+            text_widget.delete(1.0, tk.END)
+            text_widget.insert(tk.END, "--- Productos con Stock Bajo / Agotado ---\n\n")
+
+            has_low_stock = False
+            for nombre, minimo, maximo, real in data:
+                umbral_30_porciento = maximo * 0.30
+                
+                if real <= umbral_30_porciento:
+                    has_low_stock = True
+                    if real == 0:
+                        status = "❌ SIN STOCK"
+                    else:
+                        status = "⚠️ BAJO STOCK"
+                    
+                    linea = f"Producto: {nombre}\n"
+                    linea += f"Stock Actual: {int(real)} (Estado: {status})\n"
+                    linea += f"---" * 15 + "\n"
+                    text_widget.insert(tk.END, linea)
+            
+            if not has_low_stock:
+                text_widget.insert(tk.END, "Todos los productos tienen stock óptimo. ✅\n")
+            
+            text_widget.config(state=tk.DISABLED)
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al obtener la lista de productos: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def show_stock_management_menu(self):
+        stock_mgmt_window = tk.Toplevel(self.root)
+        stock_mgmt_window.title("Gestión de Productos y Stock")
+        stock_mgmt_window.geometry("400x300")
+
+        tk.Label(stock_mgmt_window, text="Opciones de Gestión", font=("Arial", 14)).pack(pady=10)
+
+        btn_ver = tk.Button(stock_mgmt_window, text="Ver Productos y Stock", width=30, command=self.show_product_stock_list)
+        btn_ver.pack(pady=5)
+
+        btn_add = tk.Button(stock_mgmt_window, text="Ingresar Nuevo Producto", width=30, command=self.add_new_product_ui)
+        btn_add.pack(pady=5)
+
+        btn_mod = tk.Button(stock_mgmt_window, text="Modificar Stock", width=30, command=self.modify_stock_ui)
+        btn_mod.pack(pady=5)
+
+        btn_del = tk.Button(stock_mgmt_window, text="Eliminar Producto", width=30, command=self.delete_product_ui)
+        btn_del.pack(pady=5)
+
+    def show_product_stock_list(self):
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT p.nombre_producto, p.marca, p.categoria_producto, s.minimo, s.maximo, s.real
+                FROM producto p JOIN stock s ON p.id_producto = s.id_producto
+            ''')
+            data = cursor.fetchall()
+            
+            stock_list_window = tk.Toplevel(self.root)
+            stock_list_window.title("Productos y Stock")
+            
+            text_widget = tk.Text(stock_list_window, wrap="word", width=80, height=20)
+            text_widget.pack(pady=10, padx=10)
+            text_widget.insert(tk.END, "--- Lista de Productos y Stock ---\n\n")
+
+            alerta_enviada = False
+
+            for nombre, marca, cat, minimo, maximo, real in data:
+                umbral_30_porciento = maximo * 0.30
+                
+                linea = f"Nombre: {nombre}\n"
+                linea += f"Marca: {marca}, Categoría: {cat}\n"
+                linea += f"Stock Mínimo: {minimo}, Stock Máximo: {maximo}, Stock Actual: {real}\n"
+                
+                if real <= umbral_30_porciento:
+                    linea += "Estado: ⚠️ REPONER STOCK\n"
+                    if not alerta_enviada:
+                        messagebox.showwarning("¡Alerta de Stock!", f"Hay que reponer stock del producto: {nombre}")
+                        alerta_enviada = True
+                else:
+                    linea += "Estado: ✅ Stock óptimo\n"
+                
+                text_widget.insert(tk.END, linea)
+                text_widget.insert(tk.END, "-" * 70 + "\n")
+            
+            text_widget.config(state=tk.DISABLED)
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al obtener la lista de productos: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def add_new_product_ui(self):
+        add_win = tk.Toplevel(self.root)
+        add_win.title("Ingresar Nuevo Producto")
+        add_win.geometry("350x350")
+        
+        tk.Label(add_win, text="Nombre del producto:").pack(pady=5)
+        entry_nombre = tk.Entry(add_win)
+        entry_nombre.pack()
+        
+        tk.Label(add_win, text="Marca:").pack(pady=5)
+        entry_marca = tk.Entry(add_win)
+        entry_marca.pack()
+        
+        tk.Label(add_win, text="Categoría:").pack(pady=5)
+        entry_cat = tk.Entry(add_win)
+        entry_cat.pack()
+        
+        tk.Label(add_win, text="Precio:").pack(pady=5)
+        entry_precio = tk.Entry(add_win)
+        entry_precio.pack()
+        
+        tk.Label(add_win, text="Stock Mínimo:").pack(pady=5)
+        entry_min = tk.Entry(add_win)
+        entry_min.pack()
+        
+        tk.Label(add_win, text="Stock Máximo:").pack(pady=5)
+        entry_max = tk.Entry(add_win)
+        entry_max.pack()
+        
+        tk.Label(add_win, text="Stock Actual:").pack(pady=5)
+        entry_real = tk.Entry(add_win)
+        entry_real.pack()
+
+        def save_product():
+            try:
+                nombre = entry_nombre.get()
+                marca = entry_marca.get()
+                cat = entry_cat.get()
+                precio = float(entry_precio.get())
+                min_stock = int(entry_min.get())
+                max_stock = int(entry_max.get())
+                real_stock = int(entry_real.get())
+                
+                if min_stock > max_stock or not (min_stock <= real_stock <= max_stock):
+                    messagebox.showerror("Error de validación", "El stock no cumple con los límites establecidos.")
+                    return
+
+                conn = sqlite3.connect('blackiron.db')
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO producto (precio, nombre_producto, marca, categoria_producto)
+                    VALUES(?, ?, ?, ?)
+                ''', (precio, nombre, marca, cat))
+                conn.commit()
+                
+                id_producto = cursor.lastrowid
+                
+                cursor.execute('''
+                    INSERT INTO stock (minimo, maximo, real, id_producto)
+                    VALUES(?, ?, ?, ?)
+                ''', (min_stock, max_stock, real_stock, id_producto))
+                conn.commit()
+
+                messagebox.showinfo("Éxito", "Producto y stock guardados correctamente.")
+                add_win.destroy()
+
+            except (ValueError, sqlite3.Error) as e:
+                messagebox.showerror("Error", f"Error al guardar el producto: {e}")
+            finally:
+                if conn:
+                    conn.close()
+
+        tk.Button(add_win, text="Guardar", command=save_product).pack(pady=10)
+
+    def modify_stock_ui(self):
+        mod_win = tk.Toplevel(self.root)
+        mod_win.title("Modificar Stock")
+        mod_win.geometry("350x250")
+
+        tk.Label(mod_win, text="Nombre del producto a modificar:").pack(pady=5)
+        entry_nombre = tk.Entry(mod_win)
+        entry_nombre.pack()
+        
+        tk.Label(mod_win, text="Marca del producto:").pack(pady=5)
+        entry_marca = tk.Entry(mod_win)
+        entry_marca.pack()
+        
+        tk.Label(mod_win, text="Nuevo stock:").pack(pady=5)
+        entry_nuevo_stock = tk.Entry(mod_win)
+        entry_nuevo_stock.pack()
+
+        def update_stock():
+            try:
+                nombre = entry_nombre.get()
+                marca = entry_marca.get()
+                nuevo_stock = int(entry_nuevo_stock.get())
+
+                conn = sqlite3.connect('blackiron.db')
+                cursor = conn.cursor()
+                
+                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                producto = cursor.fetchone()
+                
+                if not producto:
+                    messagebox.showerror("Error", "Producto no encontrado.")
+                    return
+
+                id_prod = producto[0]
+                
+                cursor.execute("UPDATE stock SET real = ? WHERE id_producto = ?", (nuevo_stock, id_prod))
+                conn.commit()
+                messagebox.showinfo("Éxito", "Stock actualizado correctamente.")
+                mod_win.destroy()
+            except (ValueError, sqlite3.Error) as e:
+                messagebox.showerror("Error", f"Error al actualizar el stock: {e}")
+            finally:
+                if conn:
+                    conn.close()
+        
+        tk.Button(mod_win, text="Actualizar Stock", command=update_stock).pack(pady=10)
+
+    def delete_product_ui(self):
+        del_win = tk.Toplevel(self.root)
+        del_win.title("Eliminar Producto")
+        del_win.geometry("300x180")
+        
+        tk.Label(del_win, text="Nombre del producto a eliminar:").pack(pady=5)
+        entry_nombre = tk.Entry(del_win)
+        entry_nombre.pack()
+        
+        tk.Label(del_win, text="Marca del producto:").pack(pady=5)
+        entry_marca = tk.Entry(del_win)
+        entry_marca.pack()
+        
+        def delete_product():
+            try:
+                nombre = entry_nombre.get()
+                marca = entry_marca.get()
+                
+                conn = sqlite3.connect('blackiron.db')
+                cursor = conn.cursor()
+                
+                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                producto = cursor.fetchone()
+                
+                if not producto:
+                    messagebox.showerror("Error", "Producto no encontrado.")
+                    return
+                
+                id_prod = producto[0]
+
+                cursor.execute("DELETE FROM stock WHERE id_producto = ?", (id_prod,))
+                cursor.execute("DELETE FROM producto WHERE id_producto = ?", (id_prod,))
+                conn.commit()
+                
+                messagebox.showinfo("Éxito", "Producto eliminado correctamente.")
+                del_win.destroy()
+            except sqlite3.Error as e:
+                messagebox.showerror("Error", f"Error al eliminar el producto: {e}")
+            finally:
+                if conn:
+                    conn.close()
+        
+        tk.Button(del_win, text="Eliminar", command=delete_product).pack(pady=10)
+
+    def show_cal_stock_menu(self):
+        cal_stock_win = tk.Toplevel(self.root)
+        cal_stock_win.title("Calcular Stock")
+        cal_stock_win.geometry("350x200")
+
+        tk.Label(cal_stock_win, text="Opciones de Cálculo de Stock", font=("Arial", 14)).pack(pady=10)
+        
+        btn_total = tk.Button(cal_stock_win, text="Calcular Stock Total", width=25, command=self.calculate_total_stock)
+        btn_total.pack(pady=5)
+        
+        btn_category = tk.Button(cal_stock_win, text="Calcular Stock por Categoría", width=25, command=self.calculate_stock_by_category)
+        btn_category.pack(pady=5)
+
+    def calculate_total_stock(self):
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT SUM(real) FROM stock")
+            total = cursor.fetchone()[0]
+
+            messagebox.showinfo("Stock Total", f"El stock total de todos los productos es: {int(total) if total else 0}")
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al calcular el stock total: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def calculate_stock_by_category(self):
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT DISTINCT categoria_producto FROM producto")
+            categories = [cat[0] for cat in cursor.fetchall()]
+            
+            category_window = tk.Toplevel(self.root)
+            category_window.title("Stock por Categoría")
+            category_window.geometry("300x200")
+
+            def show_stock_for_category(category):
+                try:
+                    conn_inner = sqlite3.connect('blackiron.db')
+                    cursor_inner = conn_inner.cursor()
+                    cursor_inner.execute("""
+                        SELECT SUM(s.real)
+                        FROM stock s INNER JOIN producto p ON s.id_producto = p.id_producto
+                        WHERE p.categoria_producto = ?
+                    """, (category,))
+                    total_cat = cursor_inner.fetchone()[0]
+                    messagebox.showinfo("Stock por Categoría", f"El stock total para '{category}' es: {int(total_cat) if total_cat else 0}")
+                except sqlite3.Error as e:
+                    messagebox.showerror("Error de BD", f"Error al calcular el stock: {e}")
+                finally:
+                    if conn_inner:
+                        conn_inner.close()
+                    category_window.destroy()
+
+            tk.Label(category_window, text="Selecciona una categoría:", font=("Arial", 12)).pack(pady=10)
+            
+            if not categories:
+                tk.Label(category_window, text="No hay categorías disponibles.").pack()
+            else:
+                for cat in categories:
+                    tk.Button(category_window, text=cat, command=lambda c=cat: show_stock_for_category(c)).pack(pady=2)
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al obtener categorías: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = BlackIronApp(root)
+    root.mainloop()
