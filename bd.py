@@ -109,6 +109,7 @@ cursor.execute('''
 CREATE TABLE llevar(
     id INT PRIMARY KEY,
     id_pedido INT,
+    cantidad INT,
     id_producto INT,
     foreign key (id_pedido) references pedido(id_pedido),
     foreign key (id_producto) references producto(id_producto)
@@ -119,6 +120,7 @@ cursor.execute('''
 CREATE TABLE pedido_kit(
     id INT PRIMARY KEY,
     id_pedido INT,
+    cantidad INT,
     id_kit INT,
     foreign key (id_kit) references kits(id),
     foreign key (id_pedido) references pedido(id_pedido)
@@ -211,7 +213,6 @@ INSERT INTO stock (minimo, maximo, total, id_producto) VALUES
 
 
 conn.commit()
-
 
 
 
