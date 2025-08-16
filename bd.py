@@ -215,4 +215,28 @@ INSERT INTO stock (minimo, maximo, total, id_producto) VALUES
 conn.commit()
 
 
+cursor.execute('''INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
+(25000, 'Proteína de suero', 'Optimum Nutrition', 'Suplemento')
+''')
+conn.commit()
+
+cursor.execute('''INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
+(30000, 'BCAA en polvo', 'MuscleTech', 'Suplemento')
+''')
+conn.commit()
+
+cursor.execute('''INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
+(12000, 'Creatina monohidratada', 'Universal Nutrition', 'Suplemento')
+''')
+conn.commit()
+
+cursor.execute('''INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
+(78000, 'Banco Plano de Pesas', 'Cap Barbell', 'Equipo')
+''')
+conn.commit()
+
+cursor.execute('''INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES
+(19500, 'Glutamina en Polvo', 'nowSports', 'Suplemento')
+''')
+conn.commit()
 
