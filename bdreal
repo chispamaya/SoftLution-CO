@@ -10,91 +10,139 @@ TIEMPO_DE_ESPERA = 30
 
 
 def setup_database():
-    try:
-        conn = sqlite3.connect('blackiron.db')
-        cursor = conn.cursor()
+    conn = sqlite3.connect("blackiron.db")
+    cursor = conn.cursor()
 
-        cursor.execute('''
+    # Tablas
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS producto (
-            id_producto INTEGER PRIMARY KEY,
-            precio REAL,
-            nombre_producto TEXT,
-            marca TEXT,
-            categoria_producto TEXT
-        );''')
+            id_producto INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            descripcion TEXT,
+            precio REAL NOT NULL
+        )
+    """)
 
-        cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS stock (
-            id INTEGER PRIMARY KEY,
-            minimo REAL,
-            maximo REAL,
-            real REAL,
+            id_stock INTEGER PRIMARY KEY AUTOINCREMENT,
             id_producto INTEGER,
-            FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
-        );''')
+            total INTEGER NOT NULL,
+            FOREIGN KEY(id_producto) REFERENCES producto(id_producto)
+        )
+    """)
 
-        cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS cliente (
-            DNI INTEGER PRIMARY KEY,
-            gmail TEXT,
-            direccion TEXT,
-            apellido TEXT,
-            nombre TEXT
-        );''')
+            id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            telefono TEXT,
+            correo TEXT
+        )
+    """)
 
-        cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS factura (
-            id_factura INTEGER PRIMARY KEY,
-            total REAL,
-            nombre_producto TEXT,
-            DNI INTEGER,
-            FOREIGN KEY (DNI) REFERENCES cliente(DNI)
-        );''')
+            id_factura INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cliente INTEGER,
+            fecha TEXT NOT NULL,
+            total REAL NOT NULL,
+            FOREIGN KEY(id_cliente) REFERENCES cliente(id_cliente)
+        )
+    """)
 
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS facturar (
-            id_facturar INTEGER PRIMARY KEY,
-            DNI INTEGER,
-            id_factura INTEGER,
-            FOREIGN KEY (DNI) REFERENCES cliente(DNI),
-            FOREIGN KEY (id_factura) REFERENCES factura(id_factura)
-        );''')
-
-        cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS pedido (
-            id_pedido INTEGER PRIMARY KEY,
-            estado TEXT,
-            cantidad INTEGER,
-            id_producto INTEGER,
-            id_factura INTEGER,
-            FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
-            FOREIGN KEY (id_factura) REFERENCES factura(id_factura)
-        );''')
+            id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cliente INTEGER,
+            fecha TEXT NOT NULL,
+            FOREIGN KEY(id_cliente) REFERENCES cliente(id_cliente)
+        )
+    """)
 
-        cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS empleados (
-            id_empleado INTEGER PRIMARY KEY,
-            nombre TEXT,
-            apellido TEXT,
-            contrasenia TEXT
-        );''')
+            id_empleado INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            puesto TEXT,
+            salario REAL
+        )
+    """)
 
-        cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS kits (
-            id_kits INTEGER PRIMARY KEY,
+            id_kit INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            precio REAL NOT NULL
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS conjuntar (
+            id_kit INTEGER,
             id_producto INTEGER,
-            FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
-        );''')
+            FOREIGN KEY(id_kit) REFERENCES kits(id_kit),
+            FOREIGN KEY(id_producto) REFERENCES producto(id_producto)
+        )
+    """)
 
-        conn.commit()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS llevar (
+            id_pedido INTEGER,
+            id_producto INTEGER,
+            cantidad INTEGER,
+            FOREIGN KEY(id_pedido) REFERENCES pedido(id_pedido),
+            FOREIGN KEY(id_producto) REFERENCES producto(id_producto)
+        )
+    """)
 
-        poblar_datos_ejemplo(conn, cursor)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS pedido_kit (
+            id_pedido INTEGER,
+            id_kit INTEGER,
+            cantidad INTEGER,
+            FOREIGN KEY(id_pedido) REFERENCES pedido(id_pedido),
+            FOREIGN KEY(id_kit) REFERENCES kits(id_kit)
+        )
+    """)
 
-    except sqlite3.Error as e:
-        messagebox.showerror("Error de Base de Datos", f"Ocurrió un error al configurar la base de datos: {e}")
-    finally:
-        if conn:
-            conn.close()
+    conn.commit()
+    conn.close()
+
+def poblar_datos_ejemplo():
+    conn = sqlite3.connect("blackiron.db")
+    cursor = conn.cursor()
+
+    # Productos
+    cursor.execute("INSERT INTO producto (nombre, descripcion, precio) VALUES ('Proteína Whey', 'Proteína en polvo 1kg', 15000)")
+    cursor.execute("INSERT INTO producto (nombre, descripcion, precio) VALUES ('Creatina', 'Creatina monohidratada 300g', 12000)")
+    cursor.execute("INSERT INTO producto (nombre, descripcion, precio) VALUES ('Pre-entrenamiento', 'Pre-workout 250g', 10000)")
+
+    # Stock
+    cursor.execute("INSERT INTO stock (id_producto, total) VALUES (1, 50)")
+    cursor.execute("INSERT INTO stock (id_producto, total) VALUES (2, 30)")
+    cursor.execute("INSERT INTO stock (id_producto, total) VALUES (3, 40)")
+
+    # Clientes
+    cursor.execute("INSERT INTO cliente (nombre, telefono, correo) VALUES ('Juan Pérez', '1122334455', 'juanperez@gmail.com')")
+    cursor.execute("INSERT INTO cliente (nombre, telefono, correo) VALUES ('Ana Gómez', '1199887766', 'anagomez@hotmail.com')")
+
+    # Empleados
+    cursor.execute("INSERT INTO empleados (nombre, puesto, salario) VALUES ('Carlos López', 'Vendedor', 200000)")
+    cursor.execute("INSERT INTO empleados (nombre, puesto, salario) VALUES ('María Fernández', 'Cajera', 180000)")
+
+    # Kits
+    cursor.execute("INSERT INTO kits (nombre, precio) VALUES ('Kit Fuerza', 25000)")
+    cursor.execute("INSERT INTO kits (nombre, precio) VALUES ('Kit Energía', 22000)")
+
+    # Conjuntar productos en kits
+    cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES (1, 1)")
+    cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES (1, 2)")
+    cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES (2, 3)")
+
+    conn.commit()
+    conn.close()
+
 
 
 def poblar_datos_ejemplo(conn, cursor):
@@ -116,7 +164,7 @@ def poblar_datos_ejemplo(conn, cursor):
 
     cursor.execute("SELECT COUNT(*) FROM stock")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO stock (minimo, maximo, real, id_producto) VALUES (10, 50, 5, 1)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, real, id_producto) VALUES (10, 50, 5, 1)") 
         cursor.execute("INSERT INTO stock (minimo, maximo, real, id_producto) VALUES (5, 20, 12, 2)")
         cursor.execute("INSERT INTO stock (minimo, maximo, real, id_producto) VALUES (2, 10, 5, 3)")
         cursor.execute("INSERT INTO stock (minimo, maximo, real, id_producto) VALUES (5, 25, 0, 4)")
