@@ -51,8 +51,9 @@ conn.commit()
 cursor.execute('''
 CREATE TABLE factura (
     id_factura INTEGER PRIMARY KEY,
-    total INT,
     DNI INTEGER,
+    nombre_producto TEXT,
+    total INT,
     FOREIGN KEY (DNI) REFERENCES cliente(DNI)
 )
 ''')
@@ -239,4 +240,5 @@ cursor.execute('''INSERT INTO producto (precio, nombre_producto, marca, categori
 (19500, 'Glutamina en Polvo', 'nowSports', 'Suplemento')
 ''')
 conn.commit()
+
 
