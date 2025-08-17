@@ -14,70 +14,91 @@ def configurar_base_de_datos():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS producto (
-            id_producto INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre_producto TEXT NOT NULL,
+            id_producto INTEGER PRIMARY KEY,
+            precio REAL,
+            nombre_producto TEXT,
             marca TEXT,
-            categoria_producto TEXT,
-            precio REAL NOT NULL
+            categoria_producto TEXT
         )
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS stock (
-            id_stock INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
+            minimo INT,
+            maximo INT,
+            total INT,
             id_producto INTEGER,
-            minimo INTEGER,
-            maximo INTEGER,
-            total INTEGER,
             FOREIGN KEY(id_producto) REFERENCES producto(id_producto)
         )
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cliente (
-            id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
-            DNI INTEGER,
-            nombre TEXT,
-            apellido TEXT,
+            DNI INTEGER PRIMARY KEY,
             gmail TEXT,
-            direccion TEXT
+            direccion TEXT,
+            apellido TEXT,
+            nombre TEXT
         )
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS factura (
-            id_factura INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_factura INTEGER PRIMARY KEY,
+            total INTEGER,
             DNI INTEGER,
-            nombre_producto TEXT,
-            total REAL,
             FOREIGN KEY(DNI) REFERENCES cliente(DNI)
         )
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS pedido (
-            id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_pedido INTEGER PRIMARY KEY,
             estado TEXT,
-            cantidad INTEGER,
-            id_producto INTEGER,
             id_factura INTEGER,
-            FOREIGN KEY(id_producto) REFERENCES producto(id_producto),
             FOREIGN KEY(id_factura) REFERENCES factura(id_factura)
         )
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS empleados (
-            id_empleado INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
-            apellido TEXT NOT NULL,
-            contrasenia TEXT NOT NULL
+            id_empleado INTEGER PRIMARY KEY,
+            nombre TEXT,
+            apellido TEXT,
+            contrasenia TEXT
         )
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS kits (
-            id_kit INTEGER PRIMARY KEY AUTOINCREMENT,
-            id_producto_fk INTEGER,
-            nombre TEXT,
-            precio REAL,
-            FOREIGN KEY(id_producto_fk) REFERENCES producto(id_producto)
+            nombre TEXT PRIMARY KEY,
+            precio REAL
         )
     """)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS conjuntar(
+            id INTEGER PRIMARY KEY,
+            id_kit TEXT,
+            id_producto INT,
+            FOREIGN KEY (id_kit) REFERENCES kits(nombre),
+            FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS llevar(
+            id INTEGER PRIMARY KEY,
+            id_pedido INT,
+            cantidad INT,
+            id_producto INT,
+            FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido),
+            FOREIGN KEY (id_producto) REFERENCES producto(id_producto)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pedido_kit(
+            id INTEGER PRIMARY KEY,
+            id_pedido INT,
+            cantidad INT,
+            id_kit TEXT,
+            FOREIGN KEY (id_kit) REFERENCES kits(nombre),
+            FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido)
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -92,35 +113,62 @@ def poblar_datos_ejemplo():
         
     cursor.execute("SELECT COUNT(*) FROM producto")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Proteina en Polvo', 'WheyPro', 'Suplementos', 150.50)")
-        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Guantes de Gimnasio', 'FitGear', 'Accesorios', 25.00)")
-        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Mancuerna de 10kg', 'IronGym', 'Equipo', 300.00)")
-        cursor.execute("INSERT INTO producto (nombre_producto, marca, categoria_producto, precio) VALUES ('Banda Elastica', 'FitGear', 'Accesorios', 200.00)")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (25000, 'Proteína de suero', 'Optimum Nutrition', 'Suplemento')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (12000, 'Creatina monohidratada', 'Universal Nutrition', 'Suplemento')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (1500, 'Guantes de entrenamiento', 'Nike', 'Accesorio')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (30000, 'BCAA en polvo', 'MuscleTech', 'Suplemento')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (78000, 'Banco Plano de Pesas', 'Cap Barbell', 'Equipo')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (19500, 'Glutamina en Polvo', 'nowSports', 'Suplemento')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (5000, 'Mancuerna 10kg', 'Everlast', 'Pesas')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (8000, 'Barra olímpica', 'Rogue', 'Pesas')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (2000, 'Colchoneta antideslizante', 'Reebok', 'Yoga')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (3500, 'Soga para saltar', 'Adidas', 'Cardio')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (15000, 'Bicicleta fija', 'SpinningPro', 'Cardio')")
+        cursor.execute("INSERT INTO producto (precio, nombre_producto, marca, categoria_producto) VALUES (7000, 'Kettlebell 16kg', 'Kong', 'Pesas')")
         
     cursor.execute("SELECT COUNT(*) FROM stock")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (10, 50, 5, 1)")
-        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (5, 20, 12, 2)")
-        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (2, 10, 5, 3)")
-        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (5, 25, 0, 4)")
-        
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (10, 50, 30, 1)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (5, 20, 15, 2)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (20, 100, 50, 3)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (8, 40, 25, 4)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (0, 50, 30, 5)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (0, 100, 80, 6)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (5, 30, 12, 7)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (2, 20, 8, 8)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (10, 50, 25, 9)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (10, 40, 18, 10)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (1, 10, 4, 11)")
+        cursor.execute("INSERT INTO stock (minimo, maximo, total, id_producto) VALUES (3, 25, 10, 12)")
+
     cursor.execute("SELECT COUNT(*) FROM cliente")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO cliente (DNI, gmail, direccion, apellido, nombre) VALUES (12345678, 'cliente1@mail.com', 'Calle Falsa 123', 'Diaz', 'Carlos')")
         
     cursor.execute("SELECT COUNT(*) FROM factura")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO factura (DNI, total) VALUES (12345678, 150.50)")
+        cursor.execute("INSERT INTO factura (DNI, total) VALUES (12345678, 15050)")
         
     cursor.execute("SELECT COUNT(*) FROM pedido")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO pedido (estado, id_factura) VALUES ('entregado', 1)")
-        
+
     cursor.execute("SELECT COUNT(*) FROM kits")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO kits (id_producto_fk, nombre, precio) VALUES (1, 'Kit Principiante', 160.00)")
-        cursor.execute("INSERT INTO kits (id_producto_fk, nombre, precio) VALUES (2, 'Kit Accesorios', 25.00)")
-        
+        cursor.execute("INSERT INTO kits (nombre, precio) VALUES ('Cardio', 9500)")
+        cursor.execute("INSERT INTO kits (nombre, precio) VALUES ('Yoga', 13500)")
+        cursor.execute("INSERT INTO kits (nombre, precio) VALUES ('Fuerza', 22000)")
+
+    cursor.execute("SELECT COUNT(*) FROM conjuntar")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Cardio', 10)")
+        cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Cardio', 11)")
+        cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Yoga', 9)")
+        cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Yoga', 10)")
+        cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Fuerza', 7)")
+        cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Fuerza', 8)")
+        cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Fuerza', 12)")
+    
     conn.commit()
     conn.close()
 
@@ -236,7 +284,7 @@ class AplicacionBlackIron:
             conn = sqlite3.connect('blackiron.db')
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT p.id_pedido, p.estado, p.cantidad, pr.nombre_producto, f.id_factura FROM pedido p INNER JOIN producto pr ON p.id_producto = pr.id_producto INNER JOIN factura f ON p.id_factura = f.id_factura")
+                "SELECT p.id_pedido, p.estado, c.cantidad, pr.nombre_producto, f.id_factura FROM pedido p INNER JOIN llevar c ON p.id_pedido = c.id_pedido INNER JOIN producto pr ON c.id_producto = pr.id_producto INNER JOIN factura f ON p.id_factura = f.id_factura")
             datos_pedidos = cursor.fetchall()
 
             ventana_pedidos = tk.Toplevel(self.raiz)
@@ -263,23 +311,36 @@ class AplicacionBlackIron:
             conn = sqlite3.connect('blackiron.db')
             cursor = conn.cursor()
             
-            # --- CORRECCIÓN AQUÍ ---
-            # La tabla kits tiene 'id_producto_fk', no 'id_producto'.
-            cursor.execute("SELECT k.nombre, p.nombre_producto FROM kits k INNER JOIN producto p ON k.id_producto_fk = p.id_producto")
+            cursor.execute("""
+                SELECT k.nombre, p.nombre_producto
+                FROM kits k
+                JOIN conjuntar c ON k.nombre = c.id_kit
+                JOIN producto p ON c.id_producto = p.id_producto
+                ORDER BY k.nombre
+            """)
             datos_kits = cursor.fetchall()
 
             ventana_kits = tk.Toplevel(self.raiz)
             ventana_kits.title("Ver Kits")
 
-            widget_texto = tk.Text(ventana_kits, wrap="word", width=40, height=10)
+            widget_texto = tk.Text(ventana_kits, wrap="word", width=50, height=15)
             widget_texto.pack(pady=10, padx=10)
 
             widget_texto.insert(tk.END, "Nombre del Kit | Producto\n")
-            widget_texto.insert(tk.END, "------------------------\n")
+            widget_texto.insert(tk.END, "--------------------------------------------------\n")
 
             if datos_kits:
-                for fila in datos_kits:
-                    widget_texto.insert(tk.END, f"{fila[0]:<15} | {fila[1]}\n")
+                kits_agrupados = {}
+                for kit, producto in datos_kits:
+                    if kit not in kits_agrupados:
+                        kits_agrupados[kit] = []
+                    kits_agrupados[kit].append(producto)
+
+                for kit, productos in kits_agrupados.items():
+                    widget_texto.insert(tk.END, f"Kit: {kit}\n")
+                    for producto in productos:
+                        widget_texto.insert(tk.END, f"  - {producto}\n")
+                    widget_texto.insert(tk.END, "--------------------------------------------------\n")
             else:
                 widget_texto.insert(tk.END, "No se encontraron kits en la base de datos.")
             
@@ -343,13 +404,22 @@ class AplicacionBlackIron:
 
                 total_factura = precio * cantidad
 
-                cursor.execute("INSERT INTO factura (total, nombre_producto, DNI) VALUES (?, ?, ?)",
-                               (total_factura, nombre_producto, dni))
+                # Insertar o actualizar cliente
+                cursor.execute("SELECT DNI FROM cliente WHERE DNI = ?", (dni,))
+                if cursor.fetchone() is None:
+                    messagebox.showwarning("Cliente no encontrado", "El cliente con ese DNI no existe. Por favor, regístrelo primero.")
+                    # Aquí podrías añadir la lógica para crear un nuevo cliente si lo deseas
+                    return
+
+                cursor.execute("INSERT INTO factura (total, DNI) VALUES (?, ?)", (total_factura, dni))
                 id_factura = cursor.lastrowid
 
                 cursor.execute(
-                    "INSERT INTO pedido (estado, cantidad, id_producto, id_factura) VALUES ('pendiente', ?, ?, ?)",
-                    (cantidad, id_producto, id_factura))
+                    "INSERT INTO pedido (estado, id_factura) VALUES ('pendiente', ?)", (id_factura,))
+                id_pedido = cursor.lastrowid
+                
+                cursor.execute("INSERT INTO llevar (id_pedido, cantidad, id_producto) VALUES (?, ?, ?)",
+                               (id_pedido, cantidad, id_producto))
 
                 nuevo_stock = stock_total[0] - cantidad
                 cursor.execute("UPDATE stock SET total = ? WHERE id_producto = ?", (nuevo_stock, id_producto))
@@ -474,7 +544,6 @@ class AplicacionBlackIron:
         opcion_estado = tk.OptionMenu(ventana_filtro, estado_var, *estado_opciones)
         opcion_estado.pack()
         
-        # Widget para mostrar la lista de productos
         widget_texto = tk.Text(ventana_filtro, wrap="word", width=60, height=15)
         widget_texto.pack(pady=10, padx=10)
         
@@ -488,7 +557,6 @@ class AplicacionBlackIron:
         boton_filtrar = tk.Button(ventana_filtro, text="Aplicar Filtros", command=aplicar_filtro)
         boton_filtrar.pack(pady=10)
 
-        # Mostrar la lista inicial sin filtros
         self.mostrar_lista_productos_stock(widget_texto)
 
 
@@ -497,8 +565,6 @@ class AplicacionBlackIron:
             conn = sqlite3.connect('blackiron.db')
             cursor = conn.cursor()
             
-            # --- CORRECCIÓN AQUÍ ---
-            # Se usó 's.total' en lugar de 's.real' para la columna de stock.
             sql_query = """
                 SELECT p.nombre_producto, p.marca, p.categoria_producto, s.minimo, s.maximo, s.total
                 FROM producto p JOIN stock s ON p.id_producto = s.id_producto
@@ -529,7 +595,10 @@ class AplicacionBlackIron:
 
             has_results = False
             for nombre_prod, marca_prod, cat_prod, minimo, maximo, total in datos_filtrados:
-                umbral_30_porciento = maximo * 0.30
+                if maximo is not None:
+                    umbral_30_porciento = maximo * 0.30
+                else:
+                    umbral_30_porciento = 0
                 
                 current_status = ""
                 if total == 0:
@@ -539,7 +608,6 @@ class AplicacionBlackIron:
                 else:
                     current_status = "Óptimo"
 
-                # Aplicar filtro por estado
                 if estado != "Cualquiera" and estado.replace(" ", "") != current_status.replace(" ", ""):
                     continue
                 
