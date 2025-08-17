@@ -72,10 +72,10 @@ def configurar_base_de_datos():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS kits (
             id_kit INTEGER PRIMARY KEY AUTOINCREMENT,
-            id_producto INTEGER,
+            id_producto_fk INTEGER,
             nombre TEXT,
             precio REAL,
-            FOREIGN KEY(id_producto) REFERENCES producto(id_producto)
+            FOREIGN KEY(id_producto_fk) REFERENCES producto(id_producto)
         )
     """)
     conn.commit()
@@ -115,6 +115,11 @@ def poblar_datos_ejemplo():
     cursor.execute("SELECT COUNT(*) FROM pedido")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO pedido (estado, id_factura) VALUES ('entregado', 1)")
+        
+    cursor.execute("SELECT COUNT(*) FROM kits")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO kits (id_producto_fk, nombre, precio) VALUES (1, 'Kit Principiante', 160.00)")
+        cursor.execute("INSERT INTO kits (id_producto_fk, nombre, precio) VALUES (2, 'Kit Accesorios', 25.00)")
         
     conn.commit()
     conn.close()
@@ -214,7 +219,7 @@ class AplicacionBlackIron:
         etiqueta_gestion_stock = tk.Label(self.raiz, text="Gestión de Stock", font=("Arial", 12))
         etiqueta_gestion_stock.pack(pady=5)
 
-        boton_ver_stock = tk.Button(self.raiz, text="Ver y Gestionar Stock", width=25, command=self.mostrar_menu_gestion_stock)
+        boton_ver_stock = tk.Button(self.raiz, text="Ver y Gestionar Stock", width=25, command=self.interfaz_filtro_productos)
         boton_ver_stock.pack(pady=5)
 
         boton_cal_stock = tk.Button(self.raiz, text="Calcular Stock General", width=25, command=self.mostrar_menu_calcular_stock)
@@ -257,8 +262,10 @@ class AplicacionBlackIron:
         try:
             conn = sqlite3.connect('blackiron.db')
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT k.nombre, p.nombre_producto FROM kits k INNER JOIN producto p ON k.id_producto = p.id_producto")
+            
+            # --- CORRECCIÓN AQUÍ ---
+            # La tabla kits tiene 'id_producto_fk', no 'id_producto'.
+            cursor.execute("SELECT k.nombre, p.nombre_producto FROM kits k INNER JOIN producto p ON k.id_producto_fk = p.id_producto")
             datos_kits = cursor.fetchall()
 
             ventana_kits = tk.Toplevel(self.raiz)
@@ -267,12 +274,15 @@ class AplicacionBlackIron:
             widget_texto = tk.Text(ventana_kits, wrap="word", width=40, height=10)
             widget_texto.pack(pady=10, padx=10)
 
-            widget_texto.insert(tk.END, "ID Kit | Producto\n")
+            widget_texto.insert(tk.END, "Nombre del Kit | Producto\n")
             widget_texto.insert(tk.END, "------------------------\n")
 
-            for fila in datos_kits:
-                widget_texto.insert(tk.END, f"{fila[0]:<7} | {fila[1]}\n")
-
+            if datos_kits:
+                for fila in datos_kits:
+                    widget_texto.insert(tk.END, f"{fila[0]:<15} | {fila[1]}\n")
+            else:
+                widget_texto.insert(tk.END, "No se encontraron kits en la base de datos.")
+            
             widget_texto.config(state=tk.DISABLED)
         except sqlite3.Error as e:
             messagebox.showerror("Error de BD", f"Error al obtener kits: {e}")
@@ -426,7 +436,7 @@ class AplicacionBlackIron:
 
         tk.Label(ventana_gestion_stock, text="Opciones de Gestión", font=("Arial", 14)).pack(pady=10)
 
-        boton_ver = tk.Button(ventana_gestion_stock, text="Ver Productos y Stock", width=30, command=self.mostrar_lista_productos_stock)
+        boton_ver = tk.Button(ventana_gestion_stock, text="Ver Productos y Stock", width=30, command=self.interfaz_filtro_productos)
         boton_ver.pack(pady=5)
 
         boton_agregar = tk.Button(ventana_gestion_stock, text="Ingresar Nuevo Producto", width=30, command=self.interfaz_agregar_producto)
@@ -437,43 +447,112 @@ class AplicacionBlackIron:
 
         boton_eliminar = tk.Button(ventana_gestion_stock, text="Eliminar Producto", width=30, command=self.interfaz_eliminar_producto)
         boton_eliminar.pack(pady=5)
+    
+    def interfaz_filtro_productos(self):
+        ventana_filtro = tk.Toplevel(self.raiz)
+        ventana_filtro.title("Filtro de Productos y Stock")
+        ventana_filtro.geometry("450x450")
 
-    def mostrar_lista_productos_stock(self):
+        tk.Label(ventana_filtro, text="Filtros de Búsqueda", font=("Arial", 14)).pack(pady=10)
+
+        tk.Label(ventana_filtro, text="Nombre del Producto:").pack(pady=5)
+        entrada_nombre = tk.Entry(ventana_filtro, width=30)
+        entrada_nombre.pack()
+        
+        tk.Label(ventana_filtro, text="Marca:").pack(pady=5)
+        entrada_marca = tk.Entry(ventana_filtro, width=30)
+        entrada_marca.pack()
+
+        tk.Label(ventana_filtro, text="Categoría:").pack(pady=5)
+        entrada_categoria = tk.Entry(ventana_filtro, width=30)
+        entrada_categoria.pack()
+
+        tk.Label(ventana_filtro, text="Estado de Stock:").pack(pady=5)
+        estado_opciones = ["Cualquiera", "Óptimo", "Bajo", "Sin Stock"]
+        estado_var = tk.StringVar(ventana_filtro)
+        estado_var.set(estado_opciones[0])
+        opcion_estado = tk.OptionMenu(ventana_filtro, estado_var, *estado_opciones)
+        opcion_estado.pack()
+        
+        # Widget para mostrar la lista de productos
+        widget_texto = tk.Text(ventana_filtro, wrap="word", width=60, height=15)
+        widget_texto.pack(pady=10, padx=10)
+        
+        def aplicar_filtro():
+            nombre = entrada_nombre.get()
+            marca = entrada_marca.get()
+            categoria = entrada_categoria.get()
+            estado = estado_var.get()
+            self.mostrar_lista_productos_stock(widget_texto, nombre, marca, categoria, estado)
+
+        boton_filtrar = tk.Button(ventana_filtro, text="Aplicar Filtros", command=aplicar_filtro)
+        boton_filtrar.pack(pady=10)
+
+        # Mostrar la lista inicial sin filtros
+        self.mostrar_lista_productos_stock(widget_texto)
+
+
+    def mostrar_lista_productos_stock(self, widget_texto, nombre="", marca="", categoria="", estado="Cualquiera"):
         try:
             conn = sqlite3.connect('blackiron.db')
             cursor = conn.cursor()
-            cursor.execute('''
+            
+            # --- CORRECCIÓN AQUÍ ---
+            # Se usó 's.total' en lugar de 's.real' para la columna de stock.
+            sql_query = """
                 SELECT p.nombre_producto, p.marca, p.categoria_producto, s.minimo, s.maximo, s.total
                 FROM producto p JOIN stock s ON p.id_producto = s.id_producto
-            ''')
-            datos = cursor.fetchall()
+            """
             
-            ventana_lista_stock = tk.Toplevel(self.raiz)
-            ventana_lista_stock.title("Productos y Stock")
+            conditions = []
+            params = []
             
-            widget_texto = tk.Text(ventana_lista_stock, wrap="word", width=80, height=20)
-            widget_texto.pack(pady=10, padx=10)
-            widget_texto.insert(tk.END, "--- Lista de Productos y Stock ---\n\n")
+            if nombre:
+                conditions.append("p.nombre_producto LIKE ?")
+                params.append(f"%{nombre}%")
+            if marca:
+                conditions.append("p.marca LIKE ?")
+                params.append(f"%{marca}%")
+            if categoria:
+                conditions.append("p.categoria_producto LIKE ?")
+                params.append(f"%{categoria}%")
+                
+            if conditions:
+                sql_query += " WHERE " + " AND ".join(conditions)
 
-            alerta_enviada = False
+            cursor.execute(sql_query, params)
+            datos_filtrados = cursor.fetchall()
+            
+            widget_texto.config(state=tk.NORMAL)
+            widget_texto.delete(1.0, tk.END)
+            widget_texto.insert(tk.END, "--- Resultados de la Búsqueda ---\n\n")
 
-            for nombre, marca, cat, minimo, maximo, total in datos:
+            has_results = False
+            for nombre_prod, marca_prod, cat_prod, minimo, maximo, total in datos_filtrados:
                 umbral_30_porciento = maximo * 0.30
                 
-                linea = f"Nombre: {nombre}\n"
-                linea += f"Marca: {marca}, Categoría: {cat}\n"
-                linea += f"Stock Mínimo: {minimo}, Stock Máximo: {maximo}, Stock Actual: {total}\n"
-                
-                if total <= umbral_30_porciento:
-                    linea += "Estado: ⚠️ REPONER STOCK\n"
-                    if not alerta_enviada:
-                        messagebox.showwarning("¡Alerta de Stock!", f"Hay que reponer stock del producto: {nombre}")
-                        alerta_enviada = True
+                current_status = ""
+                if total == 0:
+                    current_status = "Sin Stock"
+                elif total <= umbral_30_porciento:
+                    current_status = "Bajo"
                 else:
-                    linea += "Estado: ✅ Stock óptimo\n"
+                    current_status = "Óptimo"
+
+                # Aplicar filtro por estado
+                if estado != "Cualquiera" and estado.replace(" ", "") != current_status.replace(" ", ""):
+                    continue
                 
+                has_results = True
+                linea = f"Nombre: {nombre_prod}\n"
+                linea += f"Marca: {marca_prod}, Categoría: {cat_prod}\n"
+                linea += f"Stock Mínimo: {minimo}, Stock Máximo: {maximo}, Stock Actual: {total}\n"
+                linea += f"Estado: {current_status}\n"
+                linea += "-" * 70 + "\n"
                 widget_texto.insert(tk.END, linea)
-                widget_texto.insert(tk.END, "-" * 70 + "\n")
+            
+            if not has_results:
+                widget_texto.insert(tk.END, "No se encontraron productos que coincidan con los filtros. 😔\n")
             
             widget_texto.config(state=tk.DISABLED)
 
