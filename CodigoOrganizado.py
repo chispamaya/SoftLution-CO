@@ -110,11 +110,11 @@ def poblar_datos_ejemplo():
         
     cursor.execute("SELECT COUNT(*) FROM factura")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO factura (DNI, nombre_producto, total) VALUES (12345678, 'Proteina en Polvo', 150.50)")
+        cursor.execute("INSERT INTO factura (DNI, total) VALUES (12345678, 150.50)")
         
     cursor.execute("SELECT COUNT(*) FROM pedido")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO pedido (estado, cantidad, id_producto, id_factura) VALUES ('entregado', 1, 1, 1)")
+        cursor.execute("INSERT INTO pedido (estado, id_factura) VALUES ('entregado', 1)")
         
     conn.commit()
     conn.close()
@@ -258,7 +258,7 @@ class AplicacionBlackIron:
             conn = sqlite3.connect('blackiron.db')
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT k.id_kit, p.nombre_producto FROM kits k INNER JOIN producto p ON k.id_producto = p.id_producto")
+                "SELECT k.nombre, p.nombre_producto FROM kits k INNER JOIN producto p ON k.id_producto = p.id_producto")
             datos_kits = cursor.fetchall()
 
             ventana_kits = tk.Toplevel(self.raiz)
