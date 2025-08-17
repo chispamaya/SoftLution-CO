@@ -10,7 +10,7 @@ def validar_longitud(numero):
         return True
     else:
         print("Ingrese un número de documento válido con 8 dígitos.")
-        toma_pedido()
+        return False
 
 def validar_gmail(gmail):
         if '@' not in gmail:
@@ -22,6 +22,9 @@ def toma_pedido():
         total = 0
         listPro = {}
         listKit = []
+        listCant = []
+        listCantP = []
+        listCantK = []
         print('Ha seleccionado la opción de anotar un pedido...')
         print('Datos del cliente...')
         print('------------------------------')
@@ -66,6 +69,7 @@ def toma_pedido():
                                         if opcion == 1:
                                                 total = 0
                                                 listPro = {}
+                                                listCant = []
                                                 cant = int(input('¿De cuantos productos diferentes es el pedido?: '))
                                                 print('''Se le va a pedir que ingrese una cantidad  de productos acorde al número ingresado.
                                                 Si desea salir y cancelar todo ingrese -1 en cualquier momento.''')
@@ -73,7 +77,8 @@ def toma_pedido():
                                                         nombre = input(f'Ingrese el nombre del producto {i+1}: ')
                                                         marca = input(f'Ingrese la marca del producto {i+1}: ')
                                                         listPro[nombre] = marca
-                                                        canti = int(input(('¿Cuanta cantidad?: ')))
+                                                        canti = int(input('¿Cuanta cantidad?: '))
+                                                        listCant.append(canti)
                                                         cursor.execute('''
                                                         SELECT precio FROM producto
                                                         WHERE nombre_producto = ? AND marca = ?
@@ -92,17 +97,18 @@ def toma_pedido():
                                                 VALUES('En armado', ?)
                                                 ''', (id_factura,))
                                                 id_pedido = cursor.lastrowid
-                                                for nombre, marca in listPro.items():
-                                                        cursor.execute('''
-                                                        SELECT id_producto from producto
-                                                        where nombre_producto = ? AND marca = ?
-                                                        ''', (nombre, marca))
-                                                        id_producto = cursor.fetchone()
-                                                        id_producto = id_producto[0]
-                                                        cursor.execute('''
-                                                        INSERT into llevar(id_pedido, id_producto)
-                                                        VALUES(?, ?)
-                                                        ''', (id_pedido, id_producto))
+                                                for i in listCant:
+                                                        for nombre, marca in listPro.items():
+                                                                cursor.execute('''
+                                                                SELECT id_producto from producto
+                                                                where nombre_producto = ? AND marca = ?
+                                                                ''', (nombre, marca))
+                                                                id_producto = cursor.fetchone()
+                                                                id_producto = id_producto[0]
+                                                                cursor.execute('''
+                                                                INSERT into llevar(id_pedido, cantidad, id_producto)
+                                                                VALUES(?, ?, ?)
+                                                                ''', (id_pedido, i, id_producto))
                                                 conn.commit()
                                                 cursor.execute('''
                                                 SELECT * FROM factura
@@ -127,17 +133,18 @@ def toma_pedido():
                                         elif opcion == 2:
                                                 total = 0
                                                 listKit = []
+                                                listCant = []
                                                 cant = int(input('¿De cuantos kits diferentes es el pedido?: '))
                                                 print('''Se le va a pedir que ingrese los nombres de los respectivos kits deseados acorde al número ingresado.
                                                 Si desea salir y cancelar todo ingrese -1 en cualquier momento.''')
                                                 for i in range(cant):
                                                         nombre = input(f'Ingrese el nombre del kit {i+1}: ')
-                                                        canti = int(input(('¿Cuanta cantidad?: ')))
-                                                        listKit[i] = nombre
+                                                        canti = int(input('¿Cuanta cantidad?: '))
+                                                        listKit.append(nombre)
                                                         cursor.execute('''
                                                         SELECT precio FROM kits
                                                         WHERE nombre = ?
-                                                        ''', (nombre))
+                                                        ''', (nombre,))
                                                         
                                                         p = cursor.fetchone()
                                                         for i in p:
@@ -153,11 +160,12 @@ def toma_pedido():
                                                 VALUES('En armado', ?)
                                                 ''', (id_factura,))
                                                 id_pedido = cursor.lastrowid
-                                                for n in listKit():
-                                                        cursor.execute('''
-                                                        INSERT into pedido_kit(id_pedido, id_kit)
-                                                        VALUES(?, ?)
-                                                        ''', (id_pedido, listKit[n]))
+                                                for i in listCant:
+                                                        for n in listKit:
+                                                                cursor.execute('''
+                                                                INSERT into pedido_kit(id_pedido, cantidad, id_kit)
+                                                                VALUES(?, ?, ?)
+                                                                ''', (id_pedido, i, n))
                                                 conn.commit()
                                                 cursor.execute('''
                                                 SELECT * FROM factura
@@ -185,12 +193,15 @@ def toma_pedido():
                                                 totalP = 0
                                                 listPro = {}
                                                 listKit = []
+                                                listCantP = []
+                                                listCantK = []
                                                 print('A continuación, se le pedirán ingresar especificaciones acerca del pedido:')
                                                 kits = int(input('¿Cuantos kits va a encargar?: '))
                                                 for i in range(kits):
                                                         nombre = input('Ingrese el nombre del kit: ')
-                                                        cantid = int((input('¿Cuanta cantidad?: ')))
-                                                        listKit[i] = nombre
+                                                        listKit.append(nombre)
+                                                        cantid = int(input('¿Cuanta cantidad?: '))
+                                                        listCantK.append (cantid)
                                                         cursor.execute('''
                                                         SELECT precio FROM kits
                                                         WHERE nombre = ?
@@ -204,7 +215,8 @@ def toma_pedido():
                                                         nombre = input(f'Ingrese el nombre del producto {i+1}: ')
                                                         marca = input(f'Ingrese la marca del producto {i+1}: ')
                                                         listPro[nombre] = marca
-                                                        canti = int(input(('¿Cuanta cantidad?: ')))
+                                                        canti = int(input('¿Cuanta cantidad?: '))
+                                                        listCantP.append(canti)
                                                         cursor.execute('''
                                                         SELECT precio FROM producto
                                                         WHERE nombre_producto = ? AND marca = ?
@@ -224,22 +236,24 @@ def toma_pedido():
                                                                 VALUES('En armado', ?)
                                                 ''', (id_factura,))
                                                 id_pedido = cursor.lastrowid
-                                                for i in listKit:
-                                                        cursor.execute('''
-                                                        INSERT INTO pedido_kit(id_pedido, id_kit)
-                                                                VALUES(?,?)
-                                                        ''', (id_pedido, i))
-                                                for nombre, marca in listPro.items():
-                                                        cursor.execute('''
-                                                                SELECT id_producto from producto
-                                                                WHERE nombre = ? AND marca = ?
-                                                        ''',(nombre, marca))
-                                                        idPr = cursor.fetchone()
-                                                        idPr = idPr[0]
-                                                        cursor.execute('''
-                                                        INSERT INTO llevar(id_pedido, id_producto)
-                                                                VALUES(?, ?)
-                                                        ''', (id_pedido, idPr))
+                                                for n in listCantK:
+                                                        for i in listKit:
+                                                                cursor.execute('''
+                                                                INSERT INTO pedido_kit(id_pedido, cantidad, id_kit)
+                                                                        VALUES(?, ?, ?)
+                                                                ''', (id_pedido, n, i))
+                                                for n in listCantP:
+                                                        for nombre, marca in listPro.items():
+                                                                cursor.execute('''
+                                                                        SELECT id_producto from producto
+                                                                        WHERE nombre_producto = ? AND marca = ?
+                                                                ''',(nombre, marca))
+                                                                idPr = cursor.fetchone()
+                                                                idPr = idPr[0]
+                                                                cursor.execute('''
+                                                                INSERT INTO llevar(id_pedido, cantidad, id_producto)
+                                                                        VALUES(?, ?, ?)
+                                                                ''', (id_pedido, n, idPr))
                                                 conn.commit()
                                                 cursor.execute('''
                                                 SELECT * FROM factura
@@ -283,6 +297,8 @@ def toma_pedido():
                         else:
                                 print('Ingrese una opción válida.')
                                 toma_pedido()
+                else:
+                        toma_pedido()
         except Exception as e:
                 print(f'Ha ocurrido un error: {e}')       
                 toma_pedido()
@@ -291,6 +307,9 @@ def seguir_pedido(id_factura, dni):
         listPro = {}
         total = 0
         listKit = []
+        listCant = []
+        listCantP = []
+        listCantK = []
         cursor.execute('''
         SELECT DNI from factura
         WHERE id_factura = ?
@@ -313,6 +332,7 @@ def seguir_pedido(id_factura, dni):
                         if opcion == 1:
                                 total = 0
                                 listPro = {}
+                                listCant = []
                                 cant = int(input('¿De cuantos productos diferentes es el pedido?: '))
                                 print('''Se le va a pedir que ingrese una cantidad  de productos acorde al número ingresado.
                                         Si desea salir y cancelar todo ingrese -1 en cualquier momento.''')
@@ -320,7 +340,8 @@ def seguir_pedido(id_factura, dni):
                                         nombre = input(f'Ingrese el nombre del producto {i + 1}: ')
                                         marca = input(f'Ingrese la marca del producto {i + 1}: ')
                                         listPro[nombre] = marca
-                                        canti = int(input(('¿Cuanta cantidad?: ')))
+                                        canti = int(input('¿Cuanta cantidad?: '))
+                                        listCant.append(canti)
                                         cursor.execute('''
                                         SELECT precio FROM producto
                                         WHERE nombre_producto = ? AND marca = ?
@@ -333,17 +354,18 @@ def seguir_pedido(id_factura, dni):
                                         VALUES('En armado', ?)
                                         ''', (id_factura,))
                                 id_pedido = cursor.lastrowid
-                                for nombre, marca in listPro.items():
-                                        cursor.execute('''
-                                        SELECT id_producto from producto
-                                        where nombre_producto = ? AND marca = ?
-                                        ''', (nombre, marca))
-                                        id_producto = cursor.fetchone()
-                                        id_producto = id_producto[0]
-                                        cursor.execute('''
-                                        INSERT into llevar(id_pedido, id_producto)
-                                        VALUES(?, ?)
-                                        ''', (id_pedido, id_producto))
+                                for n in listCant:
+                                        for nombre, marca in listPro.items():
+                                                cursor.execute('''
+                                                SELECT id_producto from producto
+                                                where nombre_producto = ? AND marca = ?
+                                                ''', (nombre, marca))
+                                                id_producto = cursor.fetchone()
+                                                id_producto = id_producto[0]
+                                                cursor.execute('''
+                                                INSERT into llevar(id_pedido, cantidad, id_producto)
+                                                VALUES(?, ?, ?)
+                                                ''', (id_pedido, n, id_producto))
                                 cursor.execute('''
                                 UPDATE factura
                                 SET total = total + ?
@@ -362,21 +384,30 @@ def seguir_pedido(id_factura, dni):
                                                 MONTO TOTAL: {tot}
                                                 DNI del comprador: {dn}
                                         ''')
+                                deseo = input('''¿Desea agregar más pedidos a su factura?: 
+                                        
+                                        S/N - ''')
+                                if deseo.lower() == 'n':
+                                        toma_pedido()
+                                elif deseo.lower() == 's':
+                                        seguir_pedido(id_factura, dni)
 
                         elif opcion == 2:
                                 total = 0
                                 listKit = []
+                                listCant = []
                                 cant = int(input('¿De cuantos kits diferentes es el pedido?: '))
                                 print('''Se le va a pedir que ingrese los nombres de los respectivos kits deseados acorde al número ingresado.
                                 Si desea salir y cancelar todo ingrese -1 en cualquier momento.''')
                                 for i in range(cant):
                                         nombre = input(f'Ingrese el nombre del kit {i+1}: ')
-                                        canti = int(input(('¿Cuanta cantidad?: ')))
-                                        listKit[i] = nombre
+                                        listKit.append(nombre)
+                                        canti = int(input('¿Cuanta cantidad?: '))
+                                        listCant.append(canti)
                                         cursor.execute('''
                                         SELECT precio FROM kits
                                         WHERE nombre = ?
-                                        ''', (nombre))
+                                        ''', (nombre,))
                                         p = cursor.fetchone()
                                         for i in p:
                                                 pr = i
@@ -391,11 +422,12 @@ def seguir_pedido(id_factura, dni):
                                 VALUES('En armado', ?)
                                 ''', (id_factura,))
                                 id_pedido = cursor.lastrowid
-                                for n in listKit():
-                                        cursor.execute('''
-                                        INSERT into pedido_kit(id_pedido, id_kit)
-                                        VALUES(?, ?)
-                                        ''', (id_pedido, listKit[n]))
+                                for i in listCant:
+                                        for n in listKit:
+                                                cursor.execute('''
+                                                INSERT into pedido_kit(id_pedido, cantidad, id_kit)
+                                                VALUES(?, ?, ?)
+                                                ''', (id_pedido, i, n))
                                 conn.commit()
                                 cursor.execute('''
                                 SELECT * FROM factura
@@ -422,12 +454,14 @@ def seguir_pedido(id_factura, dni):
                                 totalP = 0
                                 listPro = {}
                                 listKit = []
+                                listCant = []
                                 print('A continuación, se le pedirán ingresar especificaciones acerca del pedido:')
                                 kits = int(input('¿Cuantos kits va a encargar?: '))
                                 for i in range(kits):
                                         nombre = input('Ingrese el nombre del kit: ')
-                                        cantid = int((input('¿Cuanta cantidad?: ')))
-                                        listKit[i] = nombre
+                                        listKit.append(nombre)
+                                        cantid = int(input('¿Cuanta cantidad?: '))
+                                        listCantK.append(cantid)
                                         cursor.execute('''
                                         SELECT precio FROM kits
                                         WHERE nombre = ?
@@ -441,7 +475,8 @@ def seguir_pedido(id_factura, dni):
                                         nombre = input(f'Ingrese el nombre del producto {i+1}: ')
                                         marca = input(f'Ingrese la marca del producto {i+1}: ')
                                         listPro[nombre] = marca
-                                        canti = int(input(('¿Cuanta cantidad?: ')))
+                                        canti = int(input('¿Cuanta cantidad?: '))
+                                        listCantP.append(canti)
                                         cursor.execute('''
                                         SELECT precio FROM producto
                                         WHERE nombre_producto = ? AND marca = ?
@@ -454,28 +489,30 @@ def seguir_pedido(id_factura, dni):
                                 cursor.execute('''
                                 UPDATE factura
                                         SET total = total + ?
-                                ''', (total))
+                                ''', (total,))
                                 cursor.execute('''
                                 INSERT INTO pedido(estado, id_factura)
                                                 VALUES('En armado', ?)
                                 ''', (id_factura,))
                                 id_pedido = cursor.lastrowid
-                                for i in listKit:
-                                        cursor.execute('''
-                                        INSERT INTO pedido_kit(id_pedido, id_kit)
-                                                VALUES(?,?)
-                                        ''', (id_pedido, i))
-                                for nombre, marca in listPro.items():
-                                        cursor.execute('''
-                                                SELECT id_producto from producto
-                                                WHERE nombre = ? AND marca = ?
-                                        ''',(nombre, marca))
-                                        idPr = cursor.fetchone()
-                                        idPr = idPr[0]
-                                        cursor.execute('''
-                                        INSERT INTO llevar(id_pedido, id_producto)
-                                                VALUES(?, ?)
-                                        ''', (id_pedido, idPr))
+                                for n in listCantK:
+                                        for i in listKit:
+                                                cursor.execute('''
+                                                INSERT INTO pedido_kit(id_pedido, cantidad, id_kit)
+                                                        VALUES(?, ?, ?)
+                                                ''', (id_pedido, n, i))
+                                for n in listCantP:
+                                        for nombre, marca in listPro.items():
+                                                cursor.execute('''
+                                                        SELECT id_producto from producto
+                                                        WHERE nombre_producto = ? AND marca = ?
+                                                ''',(nombre, marca))
+                                                idPr = cursor.fetchone()
+                                                idPr = idPr[0]
+                                                cursor.execute('''
+                                                INSERT INTO llevar(id_pedido, cantidad, id_producto)
+                                                        VALUES(?, ?, ?)
+                                                ''', (id_pedido, n, idPr))
                                 conn.commit()
                                 cursor.execute('''
                                 SELECT * FROM factura
@@ -503,15 +540,5 @@ def seguir_pedido(id_factura, dni):
         except Exception as e:
                 print(f'Ha ocurrido un error: {e}')       
                 toma_pedido()
-
-toma_pedido()
-
-
-
-
-
-
-
-
 
 
