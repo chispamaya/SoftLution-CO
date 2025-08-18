@@ -268,6 +268,8 @@ class AplicacionBlackIron:
         
         boton_kits = tk.Button(self.raiz, text="Ver Kits", width=25, command=self.mostrar_kits)
         boton_kits.pack(pady=5)
+        boton_gestion_kits = tk.Button(self.raiz, text="Gestión de Kits (Nuevo)", width=25, command=self.menu_kits_nuevo)
+        boton_gestion_kits.pack(pady=5)
 
         separador = tk.Frame(self.raiz, height=2, bd=1, relief=tk.SUNKEN)
         separador.pack(fill=tk.X, padx=20, pady=10)
@@ -1280,7 +1282,333 @@ class AplicacionBlackIron:
             if conn:
                 conn.close()
 
+
+    # ========== NUEVAS FUNCIONES DE GESTIÓN DE KITS (TK) ==========
+    def menu_kits_nuevo(self):
+        top = tk.Toplevel(self.raiz)
+        top.title("Gestión de Kits")
+        top.geometry("360x260")
+        tk.Label(top, text="Gestión de Kits", font=("Arial", 14, "bold")).pack(pady=10)
+        tk.Button(top, text="Ingresar Kit", width=28, command=lambda: [top.destroy(), self.ingresar_kit_gui()]).pack(pady=5)
+        tk.Button(top, text="Modificar Kit", width=28, command=lambda: [top.destroy(), self.modificar_kit_gui()]).pack(pady=5)
+        tk.Button(top, text="Borrar Kit", width=28, command=lambda: [top.destroy(), self.borrar_kit_gui()]).pack(pady=5)
+        tk.Button(top, text="Cerrar", width=28, command=top.destroy).pack(pady=10)
+
+    def kit_existe(self, nombre: str) -> bool:
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM kits WHERE nombre = ?", (nombre,))
+            return cur.fetchone() is not None
+        finally:
+            try:
+                conn.close()
+            except:
+                pass
+
+    def producto_buscar(self, nombre_prod: str, marca: str):
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cur = conn.cursor()
+            cur.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = LOWER(?) AND LOWER(marca) = LOWER(?)", (nombre_prod, marca))
+            return cur.fetchall()
+        finally:
+            try:
+                conn.close()
+            except:
+                pass
+
+    def conjuntar_count(self, id_kit: str, id_producto: int) -> int:
+        try:
+            conn = sqlite3.connect('blackiron.db')
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM conjuntar WHERE id_kit = ? AND id_producto = ?", (id_kit, id_producto))
+            return cur.fetchone()[0]
+        finally:
+            try:
+                conn.close()
+            except:
+                pass
+
+    def conjuntar_set_count(self, id_kit: str, id_producto: int, nuevo: int):
+        actual = self.conjuntar_count(id_kit, id_producto)
+        conn = sqlite3.connect('blackiron.db')
+        cur = conn.cursor()
+        try:
+            if nuevo == 0:
+                cur.execute("DELETE FROM conjuntar WHERE id_kit = ? AND id_producto = ?", (id_kit, id_producto))
+            elif nuevo < actual:
+                quitar = actual - nuevo
+                cur.execute("DELETE FROM conjuntar WHERE id IN(SELECT id FROM conjuntar WHERE id_kit = ? AND id_producto = ? LIMIT ?)", (id_kit, id_producto, quitar))
+            elif nuevo > actual:
+                agregar = nuevo - actual
+                for _ in range(agregar):
+                    cur.execute("INSERT INTO conjuntar(id_kit, id_producto) VALUES(?, ?)", (id_kit, id_producto))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def ingresar_kit_gui(self):
+        nombre = simpledialog.askstring("Ingresar Kit", "Nombre del kit:", parent=self.raiz)
+        if not nombre:
+            return
+        if self.kit_existe(nombre):
+            messagebox.showerror("Error", "El kit ingresado ya existe.")
+            return
+
+        while True:
+            precio_str = simpledialog.askstring("Ingresar Kit", "Precio del kit:", parent=self.raiz)
+            if precio_str is None:
+                return
+            try:
+                precio = float(precio_str)
+                break
+            except ValueError:
+                messagebox.showerror("Error", "Ingrese un precio válido.")
+
+        while True:
+            total_str = simpledialog.askstring("Ingresar Kit", f"¿De cuántos productos estará compuesto {nombre}?", parent=self.raiz)
+            if total_str is None:
+                return
+            try:
+                total = int(total_str)
+                if total < 0:
+                    raise ValueError
+                break
+            except ValueError:
+                messagebox.showerror("Error", "Ingrese un número entero válido.")
+
+        conn = sqlite3.connect('blackiron.db')
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO kits(nombre, precio) VALUES(?, ?)", (nombre, precio))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.close()
+            messagebox.showerror("Error", "No se pudo crear el kit (nombre duplicado).")
+            return
+        conn.close()
+
+        for i in range(total):
+            producto = simpledialog.askstring("Ingresar Kit", f"Nombre del producto {i+1}:", parent=self.raiz)
+            if producto is None:
+                self._rollback_kit(nombre)
+                return
+            marca = simpledialog.askstring("Ingresar Kit", f"Marca de '{producto}':", parent=self.raiz)
+            if marca is None:
+                self._rollback_kit(nombre)
+                return
+
+            encontrados = self.producto_buscar(producto, marca)
+            if not encontrados:
+                messagebox.showerror("No encontrado", f"No se encontró el producto '{producto}' con marca '{marca}'. Se cancela el alta del kit.")
+                self._rollback_kit(nombre)
+                return
+
+            while True:
+                cant_str = simpledialog.askstring("Ingresar Kit", f"¿Cuántas unidades de '{producto}' (marca {marca})?", parent=self.raiz)
+                if cant_str is None:
+                    self._rollback_kit(nombre)
+                    return
+                try:
+                    cant = int(cant_str)
+                    if cant < 0:
+                        raise ValueError
+                    break
+                except ValueError:
+                    messagebox.showerror("Error", "Ingrese una cantidad entera válida.")
+
+            conn = sqlite3.connect('blackiron.db')
+            cur = conn.cursor()
+            for row in encontrados:
+                pr = row[0]
+                for _ in range(cant):
+                    cur.execute("INSERT INTO conjuntar(id_kit, id_producto) VALUES(?, ?)", (nombre, pr))
+            conn.commit()
+            conn.close()
+
+        messagebox.showinfo("Éxito", "Kit ingresado con éxito.")
+
+    def _rollback_kit(self, nombre):
+        conn = sqlite3.connect('blackiron.db')
+        cur = conn.cursor()
+        cur.execute("DELETE FROM kits WHERE nombre = ?", (nombre,))
+        cur.execute("DELETE FROM conjuntar WHERE id_kit = ?", (nombre,))
+        conn.commit()
+        conn.close()
+
+    def borrar_kit_gui(self):
+        nombre = simpledialog.askstring("Eliminar Kit", "Nombre del kit a eliminar:", parent=self.raiz)
+        if not nombre:
+            return
+        if not self.kit_existe(nombre):
+            messagebox.showerror("Error", "Ese kit no existe.")
+            return
+        if not messagebox.askyesno("Confirmar", f"¿Eliminar el kit '{nombre}'?"):
+            return
+
+        conn = sqlite3.connect('blackiron.db')
+        cur = conn.cursor()
+        cur.execute("DELETE FROM conjuntar WHERE id_kit = ?", (nombre,))
+        cur.execute("DELETE FROM kits WHERE nombre = ?", (nombre,))
+        conn.commit()
+        conn.close()
+        messagebox.showinfo("Éxito", "Kit eliminado con éxito.")
+
+    def _mostrar_productos_kit(self, nombre):
+        conn = sqlite3.connect('blackiron.db')
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT p.nombre_producto, p.marca, COUNT(c.id_producto) "
+            "FROM conjuntar AS c JOIN producto AS p ON c.id_producto = p.id_producto "
+            "WHERE c.id_kit = ? GROUP BY c.id_producto, p.nombre_producto, p.marca",
+            (nombre,)
+        )
+        productos = cur.fetchall()
+        conn.close()
+
+        if not productos:
+            messagebox.showinfo("Productos del kit", "No se encontraron productos para ese kit.")
+            return []
+
+        msg = ["--- Productos en el kit ---"]
+        for nom, marca, cant in productos:
+            msg.append(f"- {nom} ({marca}): {cant}")
+        messagebox.showinfo("Productos del kit", "\n".join(msg))
+        return productos
+
+    def _modificar_productos_kit(self, nombre):
+        productos = self._mostrar_productos_kit(nombre)
+        if not productos:
+            return
+
+        while True:
+            n_str = simpledialog.askstring("Modificar productos", f"Hay {len(productos)} productos distintos.\n¿Cuántos desea modificar?", parent=self.raiz)
+            if n_str is None:
+                return
+            try:
+                nuMo = int(n_str)
+                if nuMo < 0 or nuMo > len(productos):
+                    raise ValueError
+                break
+            except ValueError:
+                messagebox.showerror("Error", "Ingrese un número válido (entre 0 y la cantidad mostrada).")
+
+        for i in range(nuMo):
+            nombr = simpledialog.askstring("Modificar producto", f"Nombre del producto {i+1}:", parent=self.raiz)
+            if nombr is None:
+                return
+            ma = simpledialog.askstring("Modificar producto", f"Marca de '{nombr}':", parent=self.raiz)
+            if ma is None:
+                return
+
+            conn = sqlite3.connect('blackiron.db')
+            cur = conn.cursor()
+            cur.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = LOWER(?) AND LOWER(marca) = LOWER(?)", (nombr, ma))
+            row = cur.fetchone()
+            conn.close()
+            if not row:
+                messagebox.showerror("Error", f"No existe el producto '{nombr}' ({ma}).")
+                return
+            idP = row[0]
+
+            canP = self.conjuntar_count(nombre, idP)
+            messagebox.showinfo("Cantidad actual", f"Cantidad actual de {nombr} ({ma}): {canP}", parent=self.raiz)
+
+            while True:
+                nuCant_str = simpledialog.askstring("Nueva cantidad", "Ingrese la nueva cantidad:", parent=self.raiz)
+                if nuCant_str is None:
+                    return
+                try:
+                    nuCant = int(nuCant_str)
+                    if nuCant < 0:
+                        raise ValueError
+                    break
+                except ValueError:
+                    messagebox.showerror("Error", "Ingrese un entero mayor o igual a 0.")
+
+            self.conjuntar_set_count(nombre, idP, nuCant)
+
+        messagebox.showinfo("Éxito", "Kit modificado con éxito.")
+
+    def _modificar_datos_kit(self, nombre):
+        conn = sqlite3.connect('blackiron.db')
+        cur = conn.cursor()
+        cur.execute("SELECT nombre, precio FROM kits WHERE nombre = ?", (nombre,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            messagebox.showerror("Error", "El kit no existe.")
+            return
+        nombre_actual, precio_actual = row
+
+        nNuevo = simpledialog.askstring("Modificar datos", f"Nuevo nombre (Enter para mantener '{nombre_actual}'):", parent=self.raiz)
+        if nNuevo in (None, ""):
+            nNuevo = nombre_actual
+
+        while True:
+            pNuevo_str = simpledialog.askstring("Modificar datos", f"Nuevo precio (Enter para mantener {precio_actual}):", parent=self.raiz)
+            if pNuevo_str is None or pNuevo_str == "":
+                pNuevo = precio_actual
+                break
+            try:
+                pNuevo = float(pNuevo_str)
+                break
+            except ValueError:
+                messagebox.showerror("Error", "Ingrese un precio válido.")
+
+        try:
+            cur.execute("UPDATE kits SET nombre = ?, precio = ? WHERE nombre = ?", (nNuevo, pNuevo, nombre_actual))
+            if nNuevo != nombre_actual:
+                cur.execute("UPDATE conjuntar SET id_kit = ? WHERE id_kit = ?", (nNuevo, nombre_actual))
+            conn.commit()
+            messagebox.showinfo("Éxito", "Datos del kit modificados con éxito.")
+        except sqlite3.IntegrityError:
+            messagebox.showerror("Error", "Ya existe un kit con ese nombre.")
+        finally:
+            conn.close()
+
+    def _modificar_datos_y_productos(self, nombre):
+        self._modificar_datos_kit(nombre)
+        self._modificar_productos_kit(nombre)
+
+    def modificar_kit_gui(self):
+        nombre = simpledialog.askstring("Modificar Kit", "Nombre del kit a modificar:", parent=self.raiz)
+        if not nombre:
+            return
+        if not self.kit_existe(nombre):
+            messagebox.showerror("Error", "Ese kit no existe.")
+            return
+
+        top = tk.Toplevel(self.raiz)
+        top.title(f"Modificar Kit: {nombre}")
+        top.geometry("420x260")
+        tk.Label(top, text=f"Modificar Kit: {nombre}", font=("Arial", 12, "bold")).pack(pady=10)
+
+        tk.Button(top, text="1) Modificar productos del kit", command=lambda: [top.destroy(), self._modificar_productos_kit(nombre)]).pack(fill="x", padx=20, pady=6)
+        tk.Button(top, text="2) Modificar nombre / precio", command=lambda: [top.destroy(), self._modificar_datos_kit(nombre)]).pack(fill="x", padx=20, pady=6)
+        tk.Button(top, text="3) Modificar productos + nombre / precio", command=lambda: [top.destroy(), self._modificar_datos_y_productos(nombre)]).pack(fill="x", padx=20, pady=6)
+        tk.Button(top, text="Cerrar", command=top.destroy).pack(pady=10)
 if __name__ == "__main__":
     raiz = tk.Tk()
     app = AplicacionBlackIron(raiz)
     raiz.mainloop()
+
+# ===== Wrappers con los nombres originales para mantener compatibilidad =====
+def ingresar_kit():
+    try:
+        app.ingresar_kit_gui()
+    except NameError:
+        messagebox.showerror("Error", "La aplicación no está inicializada.")
+
+def borrar_kit():
+    try:
+        app.borrar_kit_gui()
+    except NameError:
+        messagebox.showerror("Error", "La aplicación no está inicializada.")
+
+def modificar_kit():
+    try:
+        app.modificar_kit_gui()
+    except NameError:
+        messagebox.showerror("Error", "La aplicación no está inicializada.")
