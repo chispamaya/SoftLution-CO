@@ -266,6 +266,7 @@ class AplicacionBlackIron:
         
         boton_pedidos = tk.Button(self.raiz, text="Visualizar Pedidos", width=25, command=self.mostrar_pedidos)
         boton_pedidos.pack(pady=5)
+        
         boton_kits = tk.Button(self.raiz, text="Ver Kits", width=25, command=self.mostrar_kits)
         boton_kits.pack(pady=5)
 
@@ -275,9 +276,9 @@ class AplicacionBlackIron:
         etiqueta_gestion_stock = tk.Label(self.raiz, text="Gestión de Stock", font=("Arial", 12))
         etiqueta_gestion_stock.pack(pady=5)
 
-        boton_ver_stock = tk.Button(self.raiz, text="Ver y Gestionar Stock", width=25, command=self.interfaz_filtro_productos)
-        boton_ver_stock.pack(pady=5)
-
+        boton_gestionar_stock = tk.Button(self.raiz, text="Gestión de Stock", width=25, command=self.mostrar_menu_stock)
+        boton_gestionar_stock.pack(pady=5)
+        
         boton_cal_stock = tk.Button(self.raiz, text="Calcular Stock General", width=25, command=self.mostrar_menu_calcular_stock)
         boton_cal_stock.pack(pady=5)
 
@@ -286,6 +287,25 @@ class AplicacionBlackIron:
 
         boton_cerrar = tk.Button(self.raiz, text="Cerrar Sesión", width=25, command=self.mostrar_pantalla_inicio_sesion)
         boton_cerrar.pack(pady=10)
+
+    def mostrar_menu_stock(self):
+        ventana_stock_menu = tk.Toplevel(self.raiz)
+        ventana_stock_menu.title("Menú de Stock")
+        ventana_stock_menu.geometry("300x250")
+        
+        tk.Label(ventana_stock_menu, text="Opciones de Stock", font=("Arial", 14)).pack(pady=10)
+        
+        boton_ver_stock = tk.Button(ventana_stock_menu, text="Ver Productos y Stock", width=25, command=self.interfaz_filtro_productos)
+        boton_ver_stock.pack(pady=5)
+
+        boton_agregar = tk.Button(ventana_stock_menu, text="Ingresar Nuevo Producto", width=25, command=self.interfaz_agregar_producto)
+        boton_agregar.pack(pady=5)
+        
+        boton_modificar = tk.Button(ventana_stock_menu, text="Modificar Stock de Producto", width=25, command=self.interfaz_modificar_stock)
+        boton_modificar.pack(pady=5)
+
+        boton_eliminar = tk.Button(ventana_stock_menu, text="Eliminar Producto", width=25, command=self.interfaz_eliminar_producto)
+        boton_eliminar.pack(pady=5)
 
     def mostrar_pedidos(self):
         try:
@@ -807,7 +827,8 @@ class AplicacionBlackIron:
         except sqlite3.Error as e:
             messagebox.showerror("Error de BD", f"Error al procesar la compra: {e}")
         finally:
-            conn.close()
+            if conn:
+                conn.close()
 
     def c_compra(self):
         id_factura = simpledialog.askinteger("Cancelar Compra", "Ingrese la ID de la factura a cancelar:", minvalue=1)
@@ -872,7 +893,8 @@ class AplicacionBlackIron:
         except sqlite3.Error as e:
             messagebox.showerror("Error de BD", f"Error al cancelar la compra: {e}")
         finally:
-            conn.close()
+            if conn:
+                conn.close()
 
     def interfaz_filtro_productos(self):
         ventana_filtro = tk.Toplevel(self.raiz)
@@ -951,10 +973,8 @@ class AplicacionBlackIron:
 
             has_results = False
             for nombre_prod, marca_prod, cat_prod, minimo, maximo, total in datos_filtrados:
-                if maximo is not None:
-                    umbral_30_porciento = maximo * 0.30
-                else:
-                    umbral_30_porciento = 0
+                
+                umbral_30_porciento = maximo * 0.30 if maximo is not None else 0
                 
                 current_status = ""
                 if total == 0:
@@ -971,7 +991,10 @@ class AplicacionBlackIron:
                 linea = f"Nombre: {nombre_prod}\n"
                 linea += f"Marca: {marca_prod}, Categoría: {cat_prod}\n"
                 linea += f"Stock Mínimo: {minimo}, Stock Máximo: {maximo}, Stock Actual: {total}\n"
-                linea += f"Estado: {current_status}\n"
+                if total <= umbral_30_porciento:
+                    linea += f"Estado: ⚠️ Queda poco stock\n"
+                else:
+                    linea += f"Estado: ✅ El stock está óptimo\n"
                 linea += "-" * 70 + "\n"
                 widget_texto.insert(tk.END, linea)
             
