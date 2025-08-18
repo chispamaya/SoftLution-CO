@@ -463,7 +463,6 @@ class AplicacionBlackIron:
                     else:
                         messagebox.showerror("Error", f"Producto {nombre} no encontrado.")
                         return
-
                 self.guardar_pedido(dni, total, listPro, listCant, "producto", conn, cursor)
             except Exception as e:
                 messagebox.showerror("Error", f"Error al procesar el pedido de productos: {e}")
@@ -565,6 +564,7 @@ class AplicacionBlackIron:
             id_factura = cursor.lastrowid
             cursor.execute("INSERT INTO pedido(estado, id_factura) VALUES('En armado', ?)", (id_factura,))
             id_pedido = cursor.lastrowid
+
             
             if tipo == "producto":
                 productos_items = list(list_items.items())
@@ -581,7 +581,6 @@ class AplicacionBlackIron:
                     cursor.execute("SELECT nombre FROM kits WHERE LOWER(nombre) = ?", (nombre,))
                     id_kit = cursor.fetchone()[0]
                     cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, cantidad, id_kit))
-            
             conn.commit()
             self.mostrar_factura(id_factura, conn, cursor)
         except sqlite3.Error as e:
@@ -613,7 +612,7 @@ class AplicacionBlackIron:
     def mostrar_factura(self, id_factura, conn, cursor):
         cursor.execute("SELECT * FROM factura WHERE id_factura = ?", (id_factura,))
         datosFa = cursor.fetchone()
-        id, tot, dn, _ = datosFa
+        id, tot, dn= datosFa
         
         info = f"DATOS DE SU FACTURA:\nID: {id}\nMONTO TOTAL: {tot}\nDNI del comprador: {dn}"
         messagebox.showinfo("Factura Generada", info)
