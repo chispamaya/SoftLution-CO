@@ -1731,5 +1731,3 @@ def modificar_kit():
         app.modificar_kit_gui()
     except NameError:
         messagebox.showerror("Error", "La aplicación no está inicializada.")
-
-
