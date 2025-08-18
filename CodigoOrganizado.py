@@ -45,7 +45,6 @@ def configurar_base_de_datos():
             id_factura INTEGER PRIMARY KEY,
             total INTEGER,
             DNI INTEGER,
-            estado TEXT,
             FOREIGN KEY(DNI) REFERENCES cliente(DNI)
         )
     """)
@@ -148,7 +147,7 @@ def poblar_datos_ejemplo():
         
     cursor.execute("SELECT COUNT(*) FROM factura")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO factura (DNI, total, estado) VALUES (12345678, 15050, 'entregado')")
+        cursor.execute("INSERT INTO factura (DNI, total ) VALUES (12345678,15050)")
         
     cursor.execute("SELECT COUNT(*) FROM pedido")
     if cursor.fetchone()[0] == 0:
