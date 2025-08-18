@@ -97,7 +97,7 @@ conn.commit()
 
 cursor.execute('''
 CREATE TABLE conjuntar(
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     id_kit TEXT,
     id_producto INT,
     foreign key (id_kit) references kits(nombre),
@@ -107,7 +107,7 @@ CREATE TABLE conjuntar(
 
 cursor.execute('''
 CREATE TABLE llevar(
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     id_pedido INT,
     cantidad INT,
     id_producto INT,
@@ -118,7 +118,7 @@ CREATE TABLE llevar(
 
 cursor.execute('''
 CREATE TABLE pedido_kit(
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     id_pedido INT,
     cantidad INT,
     id_kit INT,
@@ -267,4 +267,5 @@ cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Yoga', 10)"
 cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Fuerza', 7)")
 cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Fuerza', 8)")
 cursor.execute("INSERT INTO conjuntar (id_kit, id_producto) VALUES ('Fuerza', 12)")
+
 conn.commit()
