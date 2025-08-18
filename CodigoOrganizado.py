@@ -45,6 +45,7 @@ def configurar_base_de_datos():
             id_factura INTEGER PRIMARY KEY,
             total INTEGER,
             DNI INTEGER,
+            estado TEXT,
             FOREIGN KEY(DNI) REFERENCES cliente(DNI)
         )
     """)
@@ -147,7 +148,7 @@ def poblar_datos_ejemplo():
         
     cursor.execute("SELECT COUNT(*) FROM factura")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO factura (DNI, total) VALUES (12345678, 15050)")
+        cursor.execute("INSERT INTO factura (DNI, total, estado) VALUES (12345678, 15050, 'entregado')")
         
     cursor.execute("SELECT COUNT(*) FROM pedido")
     if cursor.fetchone()[0] == 0:
@@ -254,8 +255,15 @@ class AplicacionBlackIron:
         etiqueta_bienvenida = tk.Label(self.raiz, text="Bienvenido al sistema.", font=("Arial", 14))
         etiqueta_bienvenida.pack(pady=10)
 
-        boton_tomar_pedido = tk.Button(self.raiz, text="Tomar Pedido (Ventas)", width=25, command=self.tomar_pedido)
+        boton_tomar_pedido = tk.Button(self.raiz, text="Tomar Pedido (Ventas)", width=25, command=self.toma_pedido)
         boton_tomar_pedido.pack(pady=5)
+        
+        boton_procesar_compra = tk.Button(self.raiz, text="Procesar Compra", width=25, command=self.compra)
+        boton_procesar_compra.pack(pady=5)
+        
+        boton_cancelar_compra = tk.Button(self.raiz, text="Cancelar Compra", width=25, command=self.c_compra)
+        boton_cancelar_compra.pack(pady=5)
+        
         boton_pedidos = tk.Button(self.raiz, text="Visualizar Pedidos", width=25, command=self.mostrar_pedidos)
         boton_pedidos.pack(pady=5)
         boton_kits = tk.Button(self.raiz, text="Ver Kits", width=25, command=self.mostrar_kits)
@@ -351,173 +359,521 @@ class AplicacionBlackIron:
             if conn:
                 conn.close()
 
-    def tomar_pedido(self):
-        ventana_pedido = tk.Toplevel(self.raiz)
-        ventana_pedido.title("Tomar Pedido")
-        ventana_pedido.geometry("450x550")
-
-        marco_formulario = tk.Frame(ventana_pedido)
-        marco_formulario.pack(pady=10, padx=10, fill=tk.X)
-
-        tk.Label(marco_formulario, text="DNI del Cliente:").pack(pady=5)
-        entrada_dni = tk.Entry(marco_formulario)
-        entrada_dni.pack()
-
-        tk.Label(marco_formulario, text="Nombre del Producto:").pack(pady=5)
-        entrada_producto = tk.Entry(marco_formulario)
-        entrada_producto.pack()
-
-        tk.Label(marco_formulario, text="Cantidad:").pack(pady=5)
-        entrada_cantidad = tk.Entry(marco_formulario)
-        entrada_cantidad.pack()
-
-        def guardar_pedido():
-            try:
-                conn = sqlite3.connect('blackiron.db')
-                cursor = conn.cursor()
-
-                dni = entrada_dni.get()
-                nombre_producto = entrada_producto.get()
-                cantidad = entrada_cantidad.get()
-
-                if not dni or not nombre_producto or not cantidad:
-                    messagebox.showwarning("Campos Vacíos", "Todos los campos son obligatorios.")
-                    return
-
-                cantidad = int(cantidad)
-
-                cursor.execute("SELECT id_producto, precio FROM producto WHERE nombre_producto = ?", (nombre_producto,))
-                info_producto = cursor.fetchone()
-
-                if not info_producto:
-                    messagebox.showerror("Producto Inexistente", "El producto no se encuentra en la base de datos.")
-                    return
-
-                id_producto, precio = info_producto
-
-                cursor.execute("SELECT total FROM stock WHERE id_producto = ?", (id_producto,))
-                stock_total = cursor.fetchone()
-
-                if stock_total is None or stock_total[0] < cantidad:
-                    messagebox.showerror("Error de Stock", "No hay suficiente stock disponible para este producto.")
-                    return
-
-                total_factura = precio * cantidad
-
-                # Insertar o actualizar cliente
-                cursor.execute("SELECT DNI FROM cliente WHERE DNI = ?", (dni,))
-                if cursor.fetchone() is None:
-                    messagebox.showwarning("Cliente no encontrado", "El cliente con ese DNI no existe. Por favor, regístrelo primero.")
-                    # Aquí podrías añadir la lógica para crear un nuevo cliente si lo deseas
-                    return
-
-                cursor.execute("INSERT INTO factura (total, DNI) VALUES (?, ?)", (total_factura, dni))
-                id_factura = cursor.lastrowid
-
-                cursor.execute(
-                    "INSERT INTO pedido (estado, id_factura) VALUES ('pendiente', ?)", (id_factura,))
-                id_pedido = cursor.lastrowid
-                
-                cursor.execute("INSERT INTO llevar (id_pedido, cantidad, id_producto) VALUES (?, ?, ?)",
-                               (id_pedido, cantidad, id_producto))
-
-                nuevo_stock = stock_total[0] - cantidad
-                cursor.execute("UPDATE stock SET total = ? WHERE id_producto = ?", (nuevo_stock, id_producto))
-
-                conn.commit()
-                messagebox.showinfo("Pedido Guardado",
-                                    f"El pedido para '{nombre_producto}' ha sido registrado con éxito. Total: ${total_factura}")
-                
-                self.mostrar_alertas_stock(widget_texto_stock)
-                
-            except sqlite3.Error as e:
-                messagebox.showerror("Error de BD", f"Error al guardar el pedido: {e}")
-            except ValueError:
-                messagebox.showerror("Error de entrada", "La cantidad debe ser un número entero.")
-            finally:
-                if conn:
-                    conn.close()
-
-        boton_guardar = tk.Button(marco_formulario, text="Guardar Pedido", command=guardar_pedido)
-        boton_guardar.pack(pady=10)
-
-        separador = tk.Frame(ventana_pedido, height=2, bd=1, relief=tk.SUNKEN)
-        separador.pack(fill=tk.X, padx=10, pady=5)
-
-        marco_alerta = tk.Frame(ventana_pedido)
-        marco_alerta.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+    def toma_pedido(self):
+        dni = simpledialog.askinteger("Datos del Cliente", "Ingrese el DNI o documento de identidad:", minvalue=100000, maxvalue=999999999)
+        if not dni: return
         
-        tk.Label(marco_alerta, text="⚠️ Alertas de Stock Bajo ⚠️", font=("Arial", 12)).pack(pady=5)
+        conn = sqlite3.connect('blackiron.db')
+        cursor = conn.cursor()
 
-        widget_texto_stock = tk.Text(marco_alerta, wrap="word", width=45, height=15)
-        widget_texto_stock.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        cursor.execute("SELECT DNI FROM cliente WHERE DNI = ?", (dni,))
+        existe_cliente = cursor.fetchone()
 
-        barra_desplazamiento = tk.Scrollbar(marco_alerta, command=widget_texto_stock.yview)
-        barra_desplazamiento.pack(side=tk.RIGHT, fill=tk.Y)
-        widget_texto_stock.config(yscrollcommand=barra_desplazamiento.set)
-        
-        self.mostrar_alertas_stock(widget_texto_stock)
-
-    def mostrar_alertas_stock(self, widget_texto):
-        try:
-            conn = sqlite3.connect('blackiron.db')
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT p.nombre_producto, s.minimo, s.maximo, s.total
-                FROM producto p JOIN stock s ON p.id_producto = s.id_producto
-            ''')
-            datos = cursor.fetchall()
+        if not existe_cliente:
+            nombre = simpledialog.askstring("Datos del Cliente", "Ingrese el nombre:")
+            apellido = simpledialog.askstring("Datos del Cliente", "Ingrese el apellido:")
+            direccion = simpledialog.askstring("Datos del Cliente", "Ingrese la dirección:")
+            gmail = simpledialog.askstring("Datos del Cliente", "Ingrese el gmail:")
             
-            widget_texto.config(state=tk.NORMAL)
-            widget_texto.delete(1.0, tk.END)
-            widget_texto.insert(tk.END, "--- Productos con Stock Bajo / Agotado ---\n\n")
-
-            tiene_stock_bajo = False
-            for nombre, minimo, maximo, total in datos:
-                umbral_30_porciento = maximo * 0.30
-                
-                if total <= umbral_30_porciento:
-                    tiene_stock_bajo = True
-                    if total == 0:
-                        estado = "❌ SIN STOCK"
-                    else:
-                        estado = "⚠️ BAJO STOCK"
-                    
-                    linea = f"Producto: {nombre}\n"
-                    linea += f"Stock Actual: {int(total)} (Estado: {estado})\n"
-                    linea += f"---" * 15 + "\n"
-                    widget_texto.insert(tk.END, linea)
-            
-            if not tiene_stock_bajo:
-                widget_texto.insert(tk.END, "Todos los productos tienen stock óptimo. ✅\n")
-            
-            widget_texto.config(state=tk.DISABLED)
-
-        except sqlite3.Error as e:
-            messagebox.showerror("Error de BD", f"Error al obtener la lista de productos: {e}")
-        finally:
-            if conn:
+            if not all([nombre, apellido, direccion, gmail]):
+                messagebox.showerror("Error", "Todos los campos son obligatorios.")
                 conn.close()
+                return
 
-    def mostrar_menu_gestion_stock(self):
-        ventana_gestion_stock = tk.Toplevel(self.raiz)
-        ventana_gestion_stock.title("Gestión de Productos y Stock")
-        ventana_gestion_stock.geometry("400x300")
+            if '@' not in gmail:
+                messagebox.showerror("Error", "El gmail debe contener '@'.")
+                conn.close()
+                return
 
-        tk.Label(ventana_gestion_stock, text="Opciones de Gestión", font=("Arial", 14)).pack(pady=10)
+            try:
+                cursor.execute("INSERT INTO cliente VALUES(?, ?, ?, ?, ?)", (dni, gmail, direccion, apellido, nombre))
+                conn.commit()
+                messagebox.showinfo("Cliente", "Cliente nuevo registrado con éxito.")
+            except sqlite3.Error as e:
+                messagebox.showerror("Error de BD", f"Error al registrar cliente: {e}")
+                conn.close()
+                return
+        
+        try:
+            fac = messagebox.askyesno("Factura", "¿Ya tiene una factura en curso?")
+            if fac:
+                id_factura = simpledialog.askinteger("Factura Existente", "Ingrese la ID de su factura:")
+                cursor.execute("SELECT id_factura FROM factura WHERE id_factura = ? AND DNI = ?", (id_factura, dni))
+                test = cursor.fetchone()
+                if test:
+                    self.seguir_pedido(id_factura, dni)
+                else:
+                    messagebox.showerror("Error", "ID de factura no encontrada o no coincide con el DNI.")
+            else:
+                self.crear_nuevo_pedido(dni, conn, cursor)
+        except Exception as e:
+            messagebox.showerror("Error", f"Ha ocurrido un error: {e}")
+        finally:
+            conn.close()
 
-        boton_ver = tk.Button(ventana_gestion_stock, text="Ver Productos y Stock", width=30, command=self.interfaz_filtro_productos)
-        boton_ver.pack(pady=5)
+    def crear_nuevo_pedido(self, dni, conn, cursor):
+        total = 0
+        opcion = simpledialog.askinteger("Tipo de Pedido", "1-Producto(s)\n2-Kit(s)\n3-Producto(s)+Kit(s)", minvalue=1, maxvalue=3)
+        if not opcion: return
 
-        boton_agregar = tk.Button(ventana_gestion_stock, text="Ingresar Nuevo Producto", width=30, command=self.interfaz_agregar_producto)
-        boton_agregar.pack(pady=5)
+        if opcion == 1:
+            try:
+                cant = simpledialog.askinteger("Cantidad de Productos", "¿De cuántos productos diferentes es el pedido?:")
+                if not cant: return
+                
+                listPro = {}
+                listCant = []
+                for i in range(cant):
+                    nombre = simpledialog.askstring("Producto", f"Ingrese el nombre del producto {i+1}:")
+                    marca = simpledialog.askstring("Producto", f"Ingrese la marca del producto {i+1}:")
+                    canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
+                    if not all([nombre, marca, canti]): return
+                    
+                    listPro[nombre] = marca
+                    listCant.append(canti)
+                    
+                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    p = cursor.fetchone()
+                    if p:
+                        total += p[0] * canti
+                    else:
+                        messagebox.showerror("Error", f"Producto {nombre} no encontrado.")
+                        return
 
-        boton_modificar = tk.Button(ventana_gestion_stock, text="Modificar Stock", width=30, command=self.interfaz_modificar_stock)
-        boton_modificar.pack(pady=5)
+                self.guardar_pedido(dni, total, listPro, listCant, "producto", conn, cursor)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al procesar el pedido de productos: {e}")
 
-        boton_eliminar = tk.Button(ventana_gestion_stock, text="Eliminar Producto", width=30, command=self.interfaz_eliminar_producto)
-        boton_eliminar.pack(pady=5)
+        elif opcion == 2:
+            try:
+                cant = simpledialog.askinteger("Cantidad de Kits", "¿De cuántos kits diferentes es el pedido?:")
+                if not cant: return
+                
+                listKit = []
+                listCant = []
+                for i in range(cant):
+                    nombre = simpledialog.askstring("Kit", f"Ingrese el nombre del kit {i+1}:")
+                    canti = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
+                    if not all([nombre, canti]): return
+                    
+                    listKit.append(nombre)
+                    listCant.append(canti)
+                    
+                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    p = cursor.fetchone()
+                    if p:
+                        total += p[0] * canti
+                    else:
+                        messagebox.showerror("Error", f"Kit {nombre} no encontrado.")
+                        return
+
+                self.guardar_pedido(dni, total, listKit, listCant, "kit", conn, cursor)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al procesar el pedido de kits: {e}")
+
+        elif opcion == 3:
+            try:
+                totalK = 0
+                totalP = 0
+                listPro = {}
+                listKit = []
+                listCantP = []
+                listCantK = []
+
+                kits = simpledialog.askinteger("Pedido Combinado", "¿Cuántos kits va a encargar?:")
+                if not kits: return
+                for i in range(kits):
+                    nombre = simpledialog.askstring("Kit", "Ingrese el nombre del kit:")
+                    cantid = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
+                    if not all([nombre, cantid]): return
+                    
+                    listKit.append(nombre)
+                    listCantK.append(cantid)
+                    
+                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    pK = cursor.fetchone()
+                    if pK:
+                        totalK += pK[0] * cantid
+                    else:
+                        messagebox.showerror("Error", f"Kit {nombre} no encontrado.")
+                        return
+
+                productos = simpledialog.askinteger("Pedido Combinado", "¿Cuántos productos va a encargar?:")
+                if not productos: return
+                for i in range(productos):
+                    nombre = simpledialog.askstring("Producto", f"Ingrese el nombre del producto {i+1}:")
+                    marca = simpledialog.askstring("Producto", f"Ingrese la marca del producto {i+1}:")
+                    canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
+                    if not all([nombre, marca, canti]): return
+                    
+                    listPro[nombre] = marca
+                    listCantP.append(canti)
+                    
+                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    p = cursor.fetchone()
+                    if p:
+                        totalP += p[0] * canti
+                    else:
+                        messagebox.showerror("Error", f"Producto {nombre} no encontrado.")
+                        return
+
+                total = totalK + totalP
+                self.guardar_pedido_combinado(dni, total, listPro, listCantP, listKit, listCantK, conn, cursor)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al procesar el pedido combinado: {e}")
     
+    def guardar_pedido(self, dni, total, list_items, list_cant, tipo, conn, cursor):
+        try:
+            cursor.execute("INSERT INTO factura(total, DNI, estado) VALUES(?, ?, 'En armado')", (total, dni))
+            id_factura = cursor.lastrowid
+            cursor.execute("INSERT INTO pedido(estado, id_factura) VALUES('En armado', ?)", (id_factura,))
+            id_pedido = cursor.lastrowid
+            
+            if tipo == "producto":
+                productos_items = list(list_items.items())
+                for i in range(len(productos_items)):
+                    nombre, marca = productos_items[i]
+                    cantidad = list_cant[i]
+                    cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    id_producto = cursor.fetchone()[0]
+                    cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, cantidad, id_producto))
+            elif tipo == "kit":
+                for i in range(len(list_items)):
+                    nombre = list_items[i]
+                    cantidad = list_cant[i]
+                    cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (nombre,))
+                    id_kit = cursor.fetchone()[0]
+                    cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, cantidad, id_kit))
+            
+            conn.commit()
+            self.mostrar_factura(id_factura, conn, cursor)
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al guardar el pedido: {e}")
+
+    def guardar_pedido_combinado(self, dni, total, listPro, listCantP, listKit, listCantK, conn, cursor):
+        try:
+            cursor.execute("INSERT INTO factura(total, DNI, estado) VALUES(?, ?, 'En armado')", (total, dni))
+            id_factura = cursor.lastrowid
+            cursor.execute("INSERT INTO pedido(estado, id_factura) VALUES('En armado', ?)", (id_factura,))
+            id_pedido = cursor.lastrowid
+
+            for n, c in zip(listKit, listCantK):
+                cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (n,))
+                id_kit = cursor.fetchone()[0]
+                cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, c, id_kit))
+
+            productos_items = list(listPro.items())
+            for n, (nombre, marca) in zip(listCantP, productos_items):
+                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                idPr = cursor.fetchone()[0]
+                cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, n, idPr))
+                
+            conn.commit()
+            self.mostrar_factura(id_factura, conn, cursor)
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al guardar el pedido combinado: {e}")
+
+    def mostrar_factura(self, id_factura, conn, cursor):
+        cursor.execute("SELECT * FROM factura WHERE id_factura = ?", (id_factura,))
+        datosFa = cursor.fetchone()
+        id, tot, dn, _ = datosFa
+        
+        info = f"DATOS DE SU FACTURA:\nID: {id}\nMONTO TOTAL: {tot}\nDNI del comprador: {dn}"
+        messagebox.showinfo("Factura Generada", info)
+
+        deseo = messagebox.askyesno("Continuar", "¿Desea agregar más pedidos a su factura?")
+        if deseo:
+            self.seguir_pedido(id_factura, dn)
+
+    def seguir_pedido(self, id_factura, dni):
+        conn = sqlite3.connect('blackiron.db')
+        cursor = conn.cursor()
+        
+        opcion = simpledialog.askinteger("Agregar a Factura", "1-Producto(s)\n2-Kit(s)\n3-Producto(s)+Kit(s)", minvalue=1, maxvalue=3)
+        if not opcion:
+            conn.close()
+            return
+            
+        total = 0
+        try:
+            if opcion == 1:
+                cant = simpledialog.askinteger("Cantidad de Productos", "¿De cuántos productos diferentes es el pedido?:")
+                if not cant: return
+                
+                listPro = {}
+                listCant = []
+                for i in range(cant):
+                    nombre = simpledialog.askstring("Producto", f"Ingrese el nombre del producto {i+1}:")
+                    marca = simpledialog.askstring("Producto", f"Ingrese la marca del producto {i+1}:")
+                    canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
+                    if not all([nombre, marca, canti]): return
+                    
+                    listPro[nombre] = marca
+                    listCant.append(canti)
+                    
+                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    p = cursor.fetchone()
+                    if p:
+                        total += p[0] * canti
+                    else:
+                        messagebox.showerror("Error", f"Producto {nombre} no encontrado.")
+                        return
+
+                self.agregar_a_factura(id_factura, total, listPro, listCant, "producto", conn, cursor)
+
+            elif opcion == 2:
+                cant = simpledialog.askinteger("Cantidad de Kits", "¿De cuántos kits diferentes es el pedido?:")
+                if not cant: return
+                
+                listKit = []
+                listCant = []
+                for i in range(cant):
+                    nombre = simpledialog.askstring("Kit", f"Ingrese el nombre del kit {i+1}:")
+                    canti = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
+                    if not all([nombre, canti]): return
+                    
+                    listKit.append(nombre)
+                    listCant.append(canti)
+                    
+                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    p = cursor.fetchone()
+                    if p:
+                        total += p[0] * canti
+                    else:
+                        messagebox.showerror("Error", f"Kit {nombre} no encontrado.")
+                        return
+
+                self.agregar_a_factura(id_factura, total, listKit, listCant, "kit", conn, cursor)
+            
+            elif opcion == 3:
+                totalK = 0
+                totalP = 0
+                listPro = {}
+                listKit = []
+                listCantP = []
+                listCantK = []
+
+                kits = simpledialog.askinteger("Pedido Combinado", "¿Cuántos kits va a encargar?:")
+                if not kits: return
+                for i in range(kits):
+                    nombre = simpledialog.askstring("Kit", "Ingrese el nombre del kit:")
+                    cantid = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
+                    if not all([nombre, cantid]): return
+                    
+                    listKit.append(nombre)
+                    listCantK.append(cantid)
+                    
+                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    pK = cursor.fetchone()
+                    if pK:
+                        totalK += pK[0] * cantid
+                    else:
+                        messagebox.showerror("Error", f"Kit {nombre} no encontrado.")
+                        return
+
+                productos = simpledialog.askinteger("Pedido Combinado", "¿Cuántos productos va a encargar?:")
+                if not productos: return
+                for i in range(productos):
+                    nombre = simpledialog.askstring("Producto", f"Ingrese el nombre del producto {i+1}:")
+                    marca = simpledialog.askstring("Producto", f"Ingrese la marca del producto {i+1}:")
+                    canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
+                    if not all([nombre, marca, canti]): return
+                    
+                    listPro[nombre] = marca
+                    listCantP.append(canti)
+                    
+                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    p = cursor.fetchone()
+                    if p:
+                        totalP += p[0] * canti
+                    else:
+                        messagebox.showerror("Error", f"Producto {nombre} no encontrado.")
+                        return
+
+                total = totalK + totalP
+                self.agregar_combinado_a_factura(id_factura, total, listPro, listCantP, listKit, listCantK, conn, cursor)
+        
+        except Exception as e:
+            messagebox.showerror("Error", f"Ha ocurrido un error: {e}")
+        finally:
+            conn.close()
+
+    def agregar_a_factura(self, id_factura, total_adicional, list_items, list_cant, tipo, conn, cursor):
+        try:
+            cursor.execute("UPDATE factura SET total = total + ? WHERE id_factura = ?", (total_adicional, id_factura))
+            cursor.execute("INSERT INTO pedido(estado, id_factura) VALUES('En armado', ?)", (id_factura,))
+            id_pedido = cursor.lastrowid
+            
+            if tipo == "producto":
+                productos_items = list(list_items.items())
+                for i in range(len(productos_items)):
+                    nombre, marca = productos_items[i]
+                    cantidad = list_cant[i]
+                    cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    id_producto = cursor.fetchone()[0]
+                    cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, cantidad, id_producto))
+            elif tipo == "kit":
+                for i in range(len(list_items)):
+                    nombre = list_items[i]
+                    cantidad = list_cant[i]
+                    cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (nombre,))
+                    id_kit = cursor.fetchone()[0]
+                    cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, cantidad, id_kit))
+            
+            conn.commit()
+            self.mostrar_factura(id_factura, conn, cursor)
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al agregar al pedido: {e}")
+
+    def agregar_combinado_a_factura(self, id_factura, total, listPro, listCantP, listKit, listCantK, conn, cursor):
+        try:
+            cursor.execute("UPDATE factura SET total = total + ? WHERE id_factura = ?", (total, id_factura))
+            cursor.execute("INSERT INTO pedido(estado, id_factura) VALUES('En armado', ?)", (id_factura,))
+            id_pedido = cursor.lastrowid
+
+            for n, c in zip(listKit, listCantK):
+                cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (n,))
+                id_kit = cursor.fetchone()[0]
+                cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, c, id_kit))
+
+            productos_items = list(listPro.items())
+            for n, (nombre, marca) in zip(listCantP, productos_items):
+                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                idPr = cursor.fetchone()[0]
+                cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, n, idPr))
+                
+            conn.commit()
+            self.mostrar_factura(id_factura, conn, cursor)
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al agregar el pedido combinado: {e}")
+
+    def compra(self):
+        id_factura = simpledialog.askinteger("Procesar Compra", "Ingrese la ID de la factura a procesar:", minvalue=1)
+        if not id_factura: return
+
+        conn = sqlite3.connect('blackiron.db')
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM factura WHERE id_factura = ?", (id_factura,))
+            dF = cursor.fetchone()
+            if not dF:
+                messagebox.showerror("Error", "Factura no encontrada.")
+                return
+
+            idF, total, dn, estado = dF
+            if estado == 'Vendido':
+                messagebox.showerror("Error", "Esta factura ya ha sido vendida.")
+                return
+
+            info = f"ID de la factura: {idF}\nMonto total: {total}\nDNI: {dn}"
+            vD = messagebox.askyesno("Confirmación", f"¿Son estos datos correctos?\n\n{info}")
+            
+            if vD:
+                cursor.execute("UPDATE factura SET estado = 'Vendido' WHERE id_factura = ?", (id_factura,))
+                cursor.execute("UPDATE pedido SET estado = 'Vendido' WHERE id_factura = ?", (id_factura,))
+
+                # Manejar productos individuales
+                cursor.execute("""
+                    SELECT id_producto, cantidad FROM llevar
+                    WHERE id_pedido IN(SELECT id_pedido FROM pedido WHERE id_factura = ?)
+                """, (id_factura,))
+                ic = cursor.fetchall()
+                for idP, cant in ic:
+                    cursor.execute("UPDATE stock SET total = total - ? WHERE id_producto = ?", (cant, idP))
+
+                # Manejar kits y sus productos
+                cursor.execute("""
+                    SELECT id_kit, cantidad FROM pedido_kit
+                    WHERE id_pedido IN(SELECT id_pedido FROM pedido WHERE id_factura = ?)
+                """, (id_factura,))
+                kic = cursor.fetchall()
+                for idK, cant_kit in kic:
+                    cursor.execute("SELECT id_producto FROM conjuntar WHERE id_kit = ?", (idK,))
+                    productos_kit = cursor.fetchall()
+                    for prod in productos_kit:
+                        id_producto_en_kit = prod[0]
+                        cursor.execute("""
+                            SELECT COUNT(id_producto) FROM conjuntar
+                            WHERE id_kit = ? AND id_producto = ?
+                        """, (idK, id_producto_en_kit))
+                        cantidad_en_kit = cursor.fetchone()[0]
+                        cantidad_total_a_descontar = cant_kit * cantidad_en_kit
+                        cursor.execute("UPDATE stock SET total = total - ? WHERE id_producto = ?", (cantidad_total_a_descontar, id_producto_en_kit))
+                
+                conn.commit()
+                messagebox.showinfo("Éxito", "La compra se procesó correctamente.")
+            else:
+                messagebox.showinfo("Cancelado", "Compra cancelada.")
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al procesar la compra: {e}")
+        finally:
+            conn.close()
+
+    def c_compra(self):
+        id_factura = simpledialog.askinteger("Cancelar Compra", "Ingrese la ID de la factura a cancelar:", minvalue=1)
+        if not id_factura: return
+
+        conn = sqlite3.connect('blackiron.db')
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM factura WHERE id_factura = ?", (id_factura,))
+            dF = cursor.fetchone()
+            if not dF:
+                messagebox.showerror("Error", "Factura no encontrada.")
+                return
+
+            idF, total, dn, estado = dF
+            if estado == 'Cancelado':
+                messagebox.showerror("Error", "Esta factura ya ha sido cancelada.")
+                return
+            if estado != 'Vendido':
+                messagebox.showerror("Error", "Solo se pueden cancelar compras que han sido vendidas previamente.")
+                return
+
+            info = f"ID de la factura: {idF}\nMonto total: {total}\nDNI: {dn}"
+            vD = messagebox.askyesno("Confirmación", f"¿Son estos datos correctos?\n\n{info}")
+            
+            if vD:
+                cursor.execute("UPDATE factura SET estado = 'Cancelado' WHERE id_factura = ?", (id_factura,))
+                cursor.execute("UPDATE pedido SET estado = 'Cancelado' WHERE id_factura = ?", (id_factura,))
+
+                # Devolver productos individuales al stock
+                cursor.execute("""
+                    SELECT id_producto, cantidad FROM llevar
+                    WHERE id_pedido IN(SELECT id_pedido FROM pedido WHERE id_factura = ?)
+                """, (id_factura,))
+                ic = cursor.fetchall()
+                for idP, cant in ic:
+                    cursor.execute("UPDATE stock SET total = total + ? WHERE id_producto = ?", (cant, idP))
+
+                # Devolver productos de kits al stock
+                cursor.execute("""
+                    SELECT id_kit, cantidad FROM pedido_kit
+                    WHERE id_pedido IN(SELECT id_pedido FROM pedido WHERE id_factura = ?)
+                """, (id_factura,))
+                kic = cursor.fetchall()
+                for idK, cant_kit in kic:
+                    cursor.execute("SELECT id_producto FROM conjuntar WHERE id_kit = ?", (idK,))
+                    productos_kit = cursor.fetchall()
+                    for prod in productos_kit:
+                        id_producto_en_kit = prod[0]
+                        cursor.execute("""
+                            SELECT COUNT(id_producto) FROM conjuntar
+                            WHERE id_kit = ? AND id_producto = ?
+                        """, (idK, id_producto_en_kit))
+                        cantidad_en_kit = cursor.fetchone()[0]
+                        cantidad_total_a_devolver = cant_kit * cantidad_en_kit
+                        cursor.execute("UPDATE stock SET total = total + ? WHERE id_producto = ?", (cantidad_total_a_devolver, id_producto_en_kit))
+                
+                conn.commit()
+                messagebox.showinfo("Éxito", "La compra se canceló correctamente y el stock fue actualizado.")
+            else:
+                messagebox.showinfo("Cancelado", "Cancelación anulada.")
+        except sqlite3.Error as e:
+            messagebox.showerror("Error de BD", f"Error al cancelar la compra: {e}")
+        finally:
+            conn.close()
+
     def interfaz_filtro_productos(self):
         ventana_filtro = tk.Toplevel(self.raiz)
         ventana_filtro.title("Filtro de Productos y Stock")
