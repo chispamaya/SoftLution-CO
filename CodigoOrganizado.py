@@ -147,7 +147,7 @@ def poblar_datos_ejemplo():
         
     cursor.execute("SELECT COUNT(*) FROM factura")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO factura (DNI, total ) VALUES (12345678,15050)")
+        cursor.execute("INSERT INTO factura (DNI, total) VALUES (12345678, 15050)")
         
     cursor.execute("SELECT COUNT(*) FROM pedido")
     if cursor.fetchone()[0] == 0:
@@ -448,10 +448,15 @@ class AplicacionBlackIron:
                     canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
                     if not all([nombre, marca, canti]): return
                     
-                    listPro[nombre] = marca
+                    # Cambio 1: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+                    marca_limpia = marca.strip().lower()
+
+                    listPro[nombre_limpio] = marca_limpia
                     listCant.append(canti)
                     
-                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    # Cambio 2: Usar las variables limpias en la consulta
+                    cursor.execute("SELECT precio FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre_limpio, marca_limpia))
                     p = cursor.fetchone()
                     if p:
                         total += p[0] * canti
@@ -475,10 +480,14 @@ class AplicacionBlackIron:
                     canti = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
                     if not all([nombre, canti]): return
                     
-                    listKit.append(nombre)
+                    # Cambio 3: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+
+                    listKit.append(nombre_limpio)
                     listCant.append(canti)
                     
-                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    # Cambio 4: Usar la variable limpia en la consulta
+                    cursor.execute("SELECT precio FROM kits WHERE LOWER(nombre) = ?", (nombre_limpio,))
                     p = cursor.fetchone()
                     if p:
                         total += p[0] * canti
@@ -506,10 +515,14 @@ class AplicacionBlackIron:
                     cantid = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
                     if not all([nombre, cantid]): return
                     
-                    listKit.append(nombre)
+                    # Cambio 5: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+
+                    listKit.append(nombre_limpio)
                     listCantK.append(cantid)
                     
-                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    # Cambio 6: Usar la variable limpia en la consulta
+                    cursor.execute("SELECT precio FROM kits WHERE LOWER(nombre) = ?", (nombre_limpio,))
                     pK = cursor.fetchone()
                     if pK:
                         totalK += pK[0] * cantid
@@ -525,10 +538,15 @@ class AplicacionBlackIron:
                     canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
                     if not all([nombre, marca, canti]): return
                     
-                    listPro[nombre] = marca
+                    # Cambio 7: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+                    marca_limpia = marca.strip().lower()
+
+                    listPro[nombre_limpio] = marca_limpia
                     listCantP.append(canti)
                     
-                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    # Cambio 8: Usar las variables limpias en la consulta
+                    cursor.execute("SELECT precio FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre_limpio, marca_limpia))
                     p = cursor.fetchone()
                     if p:
                         totalP += p[0] * canti
@@ -543,7 +561,7 @@ class AplicacionBlackIron:
     
     def guardar_pedido(self, dni, total, list_items, list_cant, tipo, conn, cursor):
         try:
-            cursor.execute("INSERT INTO factura(total, DNI, estado) VALUES(?, ?, 'En armado')", (total, dni))
+            cursor.execute("INSERT INTO factura(total, DNI) VALUES(?, ?)", (total, dni))
             id_factura = cursor.lastrowid
             cursor.execute("INSERT INTO pedido(estado, id_factura) VALUES('En armado', ?)", (id_factura,))
             id_pedido = cursor.lastrowid
@@ -553,14 +571,14 @@ class AplicacionBlackIron:
                 for i in range(len(productos_items)):
                     nombre, marca = productos_items[i]
                     cantidad = list_cant[i]
-                    cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    cursor.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre, marca))
                     id_producto = cursor.fetchone()[0]
                     cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, cantidad, id_producto))
             elif tipo == "kit":
                 for i in range(len(list_items)):
                     nombre = list_items[i]
                     cantidad = list_cant[i]
-                    cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (nombre,))
+                    cursor.execute("SELECT nombre FROM kits WHERE LOWER(nombre) = ?", (nombre,))
                     id_kit = cursor.fetchone()[0]
                     cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, cantidad, id_kit))
             
@@ -571,19 +589,19 @@ class AplicacionBlackIron:
 
     def guardar_pedido_combinado(self, dni, total, listPro, listCantP, listKit, listCantK, conn, cursor):
         try:
-            cursor.execute("INSERT INTO factura(total, DNI, estado) VALUES(?, ?, 'En armado')", (total, dni))
+            cursor.execute("INSERT INTO factura(total, DNI) VALUES(?, ?)", (total, dni))
             id_factura = cursor.lastrowid
             cursor.execute("INSERT INTO pedido(estado, id_factura) VALUES('En armado', ?)", (id_factura,))
             id_pedido = cursor.lastrowid
 
             for n, c in zip(listKit, listCantK):
-                cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (n,))
+                cursor.execute("SELECT nombre FROM kits WHERE LOWER(nombre) = ?", (n,))
                 id_kit = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, c, id_kit))
 
             productos_items = list(listPro.items())
             for n, (nombre, marca) in zip(listCantP, productos_items):
-                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                cursor.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre, marca))
                 idPr = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, n, idPr))
                 
@@ -627,10 +645,15 @@ class AplicacionBlackIron:
                     canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
                     if not all([nombre, marca, canti]): return
                     
-                    listPro[nombre] = marca
+                    # Cambio 9: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+                    marca_limpia = marca.strip().lower()
+
+                    listPro[nombre_limpio] = marca_limpia
                     listCant.append(canti)
                     
-                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    # Cambio 10: Usar las variables limpias en la consulta
+                    cursor.execute("SELECT precio FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre_limpio, marca_limpia))
                     p = cursor.fetchone()
                     if p:
                         total += p[0] * canti
@@ -651,10 +674,14 @@ class AplicacionBlackIron:
                     canti = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
                     if not all([nombre, canti]): return
                     
-                    listKit.append(nombre)
+                    # Cambio 11: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+
+                    listKit.append(nombre_limpio)
                     listCant.append(canti)
                     
-                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    # Cambio 12: Usar la variable limpia en la consulta
+                    cursor.execute("SELECT precio FROM kits WHERE LOWER(nombre) = ?", (nombre_limpio,))
                     p = cursor.fetchone()
                     if p:
                         total += p[0] * canti
@@ -679,10 +706,14 @@ class AplicacionBlackIron:
                     cantid = simpledialog.askinteger("Kit", "¿Cuánta cantidad?:")
                     if not all([nombre, cantid]): return
                     
-                    listKit.append(nombre)
+                    # Cambio 13: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+
+                    listKit.append(nombre_limpio)
                     listCantK.append(cantid)
                     
-                    cursor.execute("SELECT precio FROM kits WHERE nombre = ?", (nombre,))
+                    # Cambio 14: Usar la variable limpia en la consulta
+                    cursor.execute("SELECT precio FROM kits WHERE LOWER(nombre) = ?", (nombre_limpio,))
                     pK = cursor.fetchone()
                     if pK:
                         totalK += pK[0] * cantid
@@ -698,10 +729,15 @@ class AplicacionBlackIron:
                     canti = simpledialog.askinteger("Producto", "¿Cuánta cantidad?:")
                     if not all([nombre, marca, canti]): return
                     
-                    listPro[nombre] = marca
+                    # Cambio 15: Limpiar los espacios en blanco
+                    nombre_limpio = nombre.strip().lower()
+                    marca_limpia = marca.strip().lower()
+
+                    listPro[nombre_limpio] = marca_limpia
                     listCantP.append(canti)
                     
-                    cursor.execute("SELECT precio FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    # Cambio 16: Usar las variables limpias en la consulta
+                    cursor.execute("SELECT precio FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre_limpio, marca_limpia))
                     p = cursor.fetchone()
                     if p:
                         totalP += p[0] * canti
@@ -728,14 +764,14 @@ class AplicacionBlackIron:
                 for i in range(len(productos_items)):
                     nombre, marca = productos_items[i]
                     cantidad = list_cant[i]
-                    cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                    cursor.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre, marca))
                     id_producto = cursor.fetchone()[0]
                     cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, cantidad, id_producto))
             elif tipo == "kit":
                 for i in range(len(list_items)):
                     nombre = list_items[i]
                     cantidad = list_cant[i]
-                    cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (nombre,))
+                    cursor.execute("SELECT nombre FROM kits WHERE LOWER(nombre) = ?", (nombre,))
                     id_kit = cursor.fetchone()[0]
                     cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, cantidad, id_kit))
             
@@ -751,13 +787,13 @@ class AplicacionBlackIron:
             id_pedido = cursor.lastrowid
 
             for n, c in zip(listKit, listCantK):
-                cursor.execute("SELECT id_kit FROM kits WHERE nombre = ?", (n,))
+                cursor.execute("SELECT nombre FROM kits WHERE LOWER(nombre) = ?", (n,))
                 id_kit = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO pedido_kit(id_pedido, cantidad, id_kit) VALUES(?, ?, ?)", (id_pedido, c, id_kit))
 
             productos_items = list(listPro.items())
             for n, (nombre, marca) in zip(listCantP, productos_items):
-                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                cursor.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre, marca))
                 idPr = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO llevar(id_pedido, cantidad, id_producto) VALUES(?, ?, ?)", (id_pedido, n, idPr))
                 
@@ -807,14 +843,14 @@ class AplicacionBlackIron:
                 """, (id_factura,))
                 kic = cursor.fetchall()
                 for idK, cant_kit in kic:
-                    cursor.execute("SELECT id_producto FROM conjuntar WHERE id_kit = ?", (idK,))
+                    cursor.execute("SELECT id_producto FROM conjuntar WHERE LOWER(id_kit) = ?", (idK.lower(),))
                     productos_kit = cursor.fetchall()
                     for prod in productos_kit:
                         id_producto_en_kit = prod[0]
                         cursor.execute("""
                             SELECT COUNT(id_producto) FROM conjuntar
-                            WHERE id_kit = ? AND id_producto = ?
-                        """, (idK, id_producto_en_kit))
+                            WHERE LOWER(id_kit) = ? AND id_producto = ?
+                        """, (idK.lower(), id_producto_en_kit))
                         cantidad_en_kit = cursor.fetchone()[0]
                         cantidad_total_a_descontar = cant_kit * cantidad_en_kit
                         cursor.execute("UPDATE stock SET total = total - ? WHERE id_producto = ?", (cantidad_total_a_descontar, id_producto_en_kit))
@@ -873,14 +909,14 @@ class AplicacionBlackIron:
                 """, (id_factura,))
                 kic = cursor.fetchall()
                 for idK, cant_kit in kic:
-                    cursor.execute("SELECT id_producto FROM conjuntar WHERE id_kit = ?", (idK,))
+                    cursor.execute("SELECT id_producto FROM conjuntar WHERE LOWER(id_kit) = ?", (idK.lower(),))
                     productos_kit = cursor.fetchall()
                     for prod in productos_kit:
                         id_producto_en_kit = prod[0]
                         cursor.execute("""
                             SELECT COUNT(id_producto) FROM conjuntar
-                            WHERE id_kit = ? AND id_producto = ?
-                        """, (idK, id_producto_en_kit))
+                            WHERE LOWER(id_kit) = ? AND id_producto = ?
+                        """, (idK.lower(), id_producto_en_kit))
                         cantidad_en_kit = cursor.fetchone()[0]
                         cantidad_total_a_devolver = cant_kit * cantidad_en_kit
                         cursor.execute("UPDATE stock SET total = total + ? WHERE id_producto = ?", (cantidad_total_a_devolver, id_producto_en_kit))
@@ -951,14 +987,14 @@ class AplicacionBlackIron:
             params = []
             
             if nombre:
-                conditions.append("p.nombre_producto LIKE ?")
-                params.append(f"%{nombre}%")
+                conditions.append("LOWER(p.nombre_producto) LIKE ?")
+                params.append(f"%{nombre.lower()}%")
             if marca:
-                conditions.append("p.marca LIKE ?")
-                params.append(f"%{marca}%")
+                conditions.append("LOWER(p.marca) LIKE ?")
+                params.append(f"%{marca.lower()}%")
             if categoria:
-                conditions.append("p.categoria_producto LIKE ?")
-                params.append(f"%{categoria}%")
+                conditions.append("LOWER(p.categoria_producto) LIKE ?")
+                params.append(f"%{categoria.lower()}%")
                 
             if conditions:
                 sql_query += " WHERE " + " AND ".join(conditions)
@@ -1043,9 +1079,9 @@ class AplicacionBlackIron:
 
         def guardar_producto():
             try:
-                nombre = entrada_nombre.get()
-                marca = entrada_marca.get()
-                cat = entrada_categoria.get()
+                nombre = entrada_nombre.get().strip() # Limpiar espacios
+                marca = entrada_marca.get().strip() # Limpiar espacios
+                cat = entrada_categoria.get().strip() # Limpiar espacios
                 precio = float(entrada_precio.get())
                 min_stock = int(entrada_min.get())
                 max_stock = int(entrada_max.get())
@@ -1102,14 +1138,14 @@ class AplicacionBlackIron:
 
         def actualizar_stock():
             try:
-                nombre = entrada_nombre.get()
-                marca = entrada_marca.get()
+                nombre = entrada_nombre.get().strip() # Limpiar espacios
+                marca = entrada_marca.get().strip() # Limpiar espacios
                 nuevo_stock = int(entrada_nuevo_stock.get())
 
                 conn = sqlite3.connect('blackiron.db')
                 cursor = conn.cursor()
                 
-                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                cursor.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre.lower(), marca.lower()))
                 producto = cursor.fetchone()
                 
                 if not producto:
@@ -1145,13 +1181,13 @@ class AplicacionBlackIron:
         
         def eliminar_producto():
             try:
-                nombre = entrada_nombre.get()
-                marca = entrada_marca.get()
+                nombre = entrada_nombre.get().strip() # Limpiar espacios
+                marca = entrada_marca.get().strip() # Limpiar espacios
                 
                 conn = sqlite3.connect('blackiron.db')
                 cursor = conn.cursor()
                 
-                cursor.execute("SELECT id_producto FROM producto WHERE nombre_producto = ? AND marca = ?", (nombre, marca))
+                cursor.execute("SELECT id_producto FROM producto WHERE LOWER(nombre_producto) = ? AND LOWER(marca) = ?", (nombre.lower(), marca.lower()))
                 producto = cursor.fetchone()
                 
                 if not producto:
@@ -1220,8 +1256,8 @@ class AplicacionBlackIron:
                     cursor_interior.execute("""
                         SELECT SUM(s.total)
                         FROM stock s INNER JOIN producto p ON s.id_producto = p.id_producto
-                        WHERE p.categoria_producto = ?
-                    """, (categoria,))
+                        WHERE LOWER(p.categoria_producto) = ?
+                    """, (categoria.lower(),))
                     total_cat = cursor_interior.fetchone()[0]
                     messagebox.showinfo("Stock por Categoría", f"El stock total para '{categoria}' es: {int(total_cat) if total_cat else 0}")
                 except sqlite3.Error as e:
